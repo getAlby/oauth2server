@@ -9,6 +9,7 @@ import (
 	"github.com/go-oauth2/oauth2/v4/generates"
 	"github.com/golang-jwt/jwt"
 	"github.com/jackc/pgx/v4"
+	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
 
@@ -19,9 +20,14 @@ import (
 )
 
 func main() {
-
+	// Load env file as env variables
+	err := godotenv.Load(".env")
+	if err != nil {
+		logrus.Fatalf("Error loading environment variables: %v", err)
+	}
+	// Load in config from env vars
 	conf := &Config{}
-	err := envconfig.Process("", conf)
+	err = envconfig.Process("", conf)
 	if err != nil {
 		logrus.Fatalf("Error loading environment variables: %v", err)
 	}
@@ -42,12 +48,14 @@ func main() {
 
 	srv := server.NewServer(server.NewConfig(), manager)
 	controller := &OAuthController{
-		srv: srv,
+		srv:         srv,
+		clientStore: clientStore,
 	}
 	srv.SetUserAuthorizationHandler(controller.UserAuthorizeHandler)
 
 	http.HandleFunc("/oauth/authorize", controller.AuthorizationHandler)
 	http.HandleFunc("/oauth/token", controller.TokenHandler)
+	http.HandleFunc("/admin/clients", controller.ClientHandler)
 
 	logrus.Infof("Server starting on port %d", conf.Port)
 	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), nil))
@@ -71,5 +79,6 @@ func initStores(db string) (clientStore *pg.ClientStore, tokenStore *pg.TokenSto
 	if err != nil {
 		return nil, nil, err
 	}
+	logrus.Info("Succesfully connected to postgres database")
 	return
 }

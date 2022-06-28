@@ -1,13 +1,18 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 
+	"github.com/go-oauth2/oauth2/v4/models"
 	"github.com/go-oauth2/oauth2/v4/server"
+	"github.com/sirupsen/logrus"
+	pg "github.com/vgarvardt/go-oauth2-pg/v4"
 )
 
 type OAuthController struct {
-	srv *server.Server
+	srv         *server.Server
+	clientStore *pg.ClientStore
 }
 
 func (ctrl *OAuthController) AuthorizationHandler(w http.ResponseWriter, r *http.Request) {
@@ -25,4 +30,37 @@ func (ctrl *OAuthController) TokenHandler(w http.ResponseWriter, r *http.Request
 func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http.Request) (userID string, err error) {
 	// todo: parse and validate token to get user ID
 	return "user123", nil
+}
+
+func (ctrl *OAuthController) ClientHandler(w http.ResponseWriter, r *http.Request) {
+
+	switch r.Method {
+	case http.MethodPost:
+		ctrl.CreateClientHandler(w, r)
+		return
+	default:
+		w.Write([]byte("Method not supported"))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+}
+
+func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.Request) {
+	clientInfo := &models.Client{}
+	err := json.NewDecoder(r.Body).Decode(clientInfo)
+	if err != nil {
+		logrus.Errorf("Error decoding client info request %s", err.Error())
+		w.Write([]byte("Could not parse create client request"))
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	err = ctrl.clientStore.Create(clientInfo)
+	if err != nil {
+		logrus.Errorf("Error storing client info %s", err.Error())
+		w.Write([]byte("Something went wrong while storing client info"))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Add("Content-type", "application/json")
+	json.NewEncoder(w).Encode(clientInfo)
 }

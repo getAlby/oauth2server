@@ -6,6 +6,7 @@ require (
 	github.com/go-oauth2/oauth2/v4 v4.5.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/jackc/pgx/v4 v4.16.1
+	github.com/joho/godotenv v1.4.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/vgarvardt/go-oauth2-pg/v4 v4.4.3
