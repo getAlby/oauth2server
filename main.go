@@ -21,7 +21,7 @@ func main() {
 	// Load env file as env variables
 	err := godotenv.Load(".env")
 	if err != nil {
-		logrus.Fatalf("Error loading environment variables: %v", err)
+		logrus.Errorf("Error loading environment variables: %v", err)
 	}
 	// Load in config from env vars
 	conf := &Config{}
