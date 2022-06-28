@@ -48,13 +48,17 @@ func main() {
 
 	srv := server.NewServer(server.NewConfig(), manager)
 	controller := &OAuthController{
+		Config:      conf,
 		srv:         srv,
 		clientStore: clientStore,
 	}
 	srv.SetUserAuthorizationHandler(controller.UserAuthorizeHandler)
+	srv.SetInternalErrorHandler(controller.InternalErrorHandler)
 
 	http.HandleFunc("/oauth/authorize", controller.AuthorizationHandler)
 	http.HandleFunc("/oauth/token", controller.TokenHandler)
+
+	//should not be publicly accesible
 	http.HandleFunc("/admin/clients", controller.ClientHandler)
 
 	logrus.Infof("Server starting on port %d", conf.Port)
