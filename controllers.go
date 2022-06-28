@@ -39,7 +39,10 @@ func (ctrl *OAuthController) ClientHandler(w http.ResponseWriter, r *http.Reques
 		ctrl.CreateClientHandler(w, r)
 		return
 	default:
-		w.Write([]byte("Method not supported"))
+		_, err := w.Write([]byte("Method not supported"))
+		if err != nil {
+			logrus.Error(err)
+		}
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -50,17 +53,26 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 	err := json.NewDecoder(r.Body).Decode(clientInfo)
 	if err != nil {
 		logrus.Errorf("Error decoding client info request %s", err.Error())
-		w.Write([]byte("Could not parse create client request"))
+		_, err = w.Write([]byte("Could not parse create client request"))
+		if err != nil {
+			logrus.Error(err)
+		}
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	err = ctrl.clientStore.Create(clientInfo)
 	if err != nil {
 		logrus.Errorf("Error storing client info %s", err.Error())
-		w.Write([]byte("Something went wrong while storing client info"))
+		_, err = w.Write([]byte("Something went wrong while storing client info"))
+		if err != nil {
+			logrus.Error(err)
+		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Add("Content-type", "application/json")
-	json.NewEncoder(w).Encode(clientInfo)
+	err = json.NewEncoder(w).Encode(clientInfo)
+	if err != nil {
+		logrus.Error(err)
+	}
 }
