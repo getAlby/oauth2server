@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-oauth2/oauth2/v4/generates"
-	"github.com/golang-jwt/jwt"
 	"github.com/jackc/pgx/v4"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
@@ -42,18 +40,22 @@ func main() {
 	manager.MapClientStorage(clientStore)
 	manager.MapTokenStorage(tokenStore)
 
-	// generate jwt access token
-	// todo: custom
-	manager.MapAccessGenerate(generates.NewJWTAccessGenerate("", conf.JWTSecret, jwt.SigningMethodHS512))
+	svc := &Service{
+		Config:      conf,
+		clientStore: clientStore,
+	}
+
+	//use svc.Token to mint scoped tokens
+	manager.MapAccessGenerate(svc)
 
 	srv := server.NewServer(server.NewConfig(), manager)
 	controller := &OAuthController{
-		Config:      conf,
-		srv:         srv,
-		clientStore: clientStore,
+		oauthServer: srv,
+		service:     svc,
 	}
 	srv.SetUserAuthorizationHandler(controller.UserAuthorizeHandler)
 	srv.SetInternalErrorHandler(controller.InternalErrorHandler)
+	srv.SetAuthorizeScopeHandler(controller.AuthorizeScopeHandler)
 
 	http.HandleFunc("/oauth/authorize", controller.AuthorizationHandler)
 	http.HandleFunc("/oauth/token", controller.TokenHandler)

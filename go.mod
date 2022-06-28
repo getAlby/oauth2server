@@ -11,7 +11,6 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/vgarvardt/go-oauth2-pg/v4 v4.4.3
 	github.com/vgarvardt/go-pg-adapter v1.0.0
-	gopkg.in/oauth2.v3 v3.12.0
 )
 
 require (
