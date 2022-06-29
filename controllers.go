@@ -1,19 +1,16 @@
 package main
 
 import (
-	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"strings"
 
-	"github.com/go-oauth2/oauth2/v4"
 	"github.com/go-oauth2/oauth2/v4/errors"
 	"github.com/go-oauth2/oauth2/v4/models"
 	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/golang-jwt/jwt"
-	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	pg "github.com/vgarvardt/go-oauth2-pg/v4"
 )
@@ -26,11 +23,7 @@ type OAuthController struct {
 type Service struct {
 	Config      *Config
 	clientStore *pg.ClientStore
-}
-
-type ScopedClaims struct {
-	jwt.StandardClaims
-	Scope string `json:"scope"`
+	gateways    map[string]*httputil.ReverseProxy
 }
 
 var scopes = map[string]string{
@@ -41,30 +34,6 @@ var scopes = map[string]string{
 	"transactions:read":         "Read your outgoing transaction history and check payment status.",
 	"transactions:keysend:read": "Read your outgoing keysend payments and boostagrams.",
 	"balance:read":              "Read your balance.",
-}
-
-//Token function mints scoped tokens using JWT_SECRET
-func (svc *Service) Token(ctx context.Context, data *oauth2.GenerateBasic, isGenRefresh bool) (access, refresh string, err error) {
-	claims := &ScopedClaims{
-		StandardClaims: jwt.StandardClaims{
-			Audience:  data.Client.GetID(),
-			Subject:   data.UserID,
-			ExpiresAt: data.TokenInfo.GetAccessCreateAt().Add(data.TokenInfo.GetAccessExpiresIn()).Unix(),
-		},
-		Scope: data.TokenInfo.GetScope(),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	access, err = token.SignedString(svc.Config.JWTSecret)
-	if err != nil {
-		return "", "", err
-	}
-	if isGenRefresh {
-		t := uuid.NewSHA1(uuid.Must(uuid.NewRandom()), []byte(access)).String()
-		refresh = base64.URLEncoding.EncodeToString([]byte(t))
-		refresh = strings.ToUpper(strings.TrimRight(refresh, "="))
-	}
-	return access, refresh, nil
 }
 
 func (ctrl *OAuthController) AuthorizationHandler(w http.ResponseWriter, r *http.Request) {

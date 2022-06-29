@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"time"
 
 	"github.com/jackc/pgx/v4"
@@ -40,13 +42,15 @@ func main() {
 	manager.MapClientStorage(clientStore)
 	manager.MapTokenStorage(tokenStore)
 
+	gateways, err := initGateways(conf)
+	if err != nil {
+		logrus.Fatalf("Error initializing gateways", err)
+	}
 	svc := &Service{
 		Config:      conf,
 		clientStore: clientStore,
+		gateways:    gateways,
 	}
-
-	//use svc.Token to mint scoped tokens
-	manager.MapAccessGenerate(svc)
 
 	srv := server.NewServer(server.NewConfig(), manager)
 	controller := &OAuthController{
@@ -63,8 +67,22 @@ func main() {
 	//should not be publicly accesible
 	http.HandleFunc("/admin/clients", controller.ClientHandler)
 
+	//gateway
+	http.HandleFunc("/v2", controller.ApiGateway)
+
 	logrus.Infof("Server starting on port %d", conf.Port)
 	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), nil))
+}
+
+//hard-code lndhub origin server for now
+func initGateways(conf *Config) (gateways map[string]*httputil.ReverseProxy, err error) {
+	lndhubUrl, err := url.Parse(conf.LndHubUrl)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]*httputil.ReverseProxy{
+		"/v2": httputil.NewSingleHostReverseProxy(lndhubUrl),
+	}, nil
 }
 
 func initStores(db string) (clientStore *pg.ClientStore, tokenStore *pg.TokenStore, err error) {
