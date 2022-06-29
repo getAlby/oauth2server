@@ -11,8 +11,8 @@ to access the Alby Wallet API in their name. Possible use-cases include:
 - Allow an application to make payments automatically on your behalf, maybe with some monthly budget.
 
 ### Getting started
-All examples are using `httpie`
-- Get an "admin" token for your lndhub account using your login and password:
+All examples are using [httpie](https://httpie.io)
+- Get an "admin" token for your lndhub account using your lndhub login and password:
 	```
 	http POST https://lndhub.regtest.getalby.com/auth login=$login password=$password
 	```
@@ -31,7 +31,13 @@ All examples are using `httpie`
 	`Location: localhost:8080/client_app?code=YOUR_CODE`
 - Fetch an access token and a refresh token using the authorization code obtained in the previous step `oauth/token`:
 	```
-	http -a test_client:test_secret -f POST https://api.regtest.getalby.com/oauth/token code=YOUR_CODE grant_type=authorization_code redirect_uri=localhost:8080/apps
+	http -a test_client:test_secret 
+	-f POST https://api.regtest.getalby.com/oauth/token
+	code=YOUR_CODE
+	grant_type=authorization_code
+	redirect_uri=localhost:8080/client_app
+
+
 	HTTP/1.1 200 OK
 	{
     "access_token": "your_access_token",
@@ -41,6 +47,7 @@ All examples are using `httpie`
     "token_type": "Bearer"
 	}
 	```
+	Use the client_id and the client_secret as basic authentication, and use HTTP form parameters. Use the same redirect_uri as you used in the previous step.
 ### Scopes:
 WIP, more to follow
 ```
