@@ -1,5 +1,7 @@
-# OAuth2 server
+This service consists out of 2 pieces: an OAuth server issueing tokens and an API Gateway that is secured by these tokens.
 
+Deployed on regtest at `api.regtest.getalby.com`.
+## OAuth2 server
 This service is responsible for generating access tokens, so Alby users can authorize 3rd party applications
 to access the Alby Wallet API in their name. Possible use-cases include:
 
@@ -8,22 +10,45 @@ to access the Alby Wallet API in their name. Possible use-cases include:
 - Allow a 3rd party to fetch your value4value information, for example to inject it in an RSS feed.
 - Allow an application to make payments automatically on your behalf, maybe with some monthly budget.
 
-There are 2 main endpoints:
+### Getting started
+All examples are using `httpie`
+- Get an "admin" token for your lndhub account using your login and password:
+	```
+	http POST https://lndhub.regtest.getalby.com/auth login=$login password=$password
+	```
+	Save the `access_token` in the response for the next step.
 
-- `/oauth/authorize`: First step of the OAuth flow, needs `client_id`, `scope`, `state`, `redirect_uri` and `response_type` as query parameters.
-Responds by redirecting the client back to the 3rd party app if the authorization is succesful.	
-- `oauth/token`: Second step of the OAuth flow, accepts a POST request:
-```
-curl --compressed -v https://getalby.com/v1/oauth/tokens \
-	-u test_client_1:test_secret \
-	-d "grant_type=authorization_code" \
-	-d "code=7afb1c55-76e4-4c76-adb7-9d657cb47a27" \
-	-d "redirect_uri=https://www.example.com"
-```
-and responds with an access token and a refresh token.
+- Make a request to the oauth server in order to get an access code. This should be made from the browser, as the responds redirects the client back to the client application.
+	```
+	http https://api.regtest.getalby.com/oauth/authorize\?client_id=test_client\&response_type=code\&redirect_uri=localhost:8080/client_app\&scope\=balance:read Authorization:"Bearer $token"
+	```
+	- `redirect_uri` should be a web or native uri where the client should be redirected once the authorization is complete.
+	- You will need a `client_id` and a `client_secret`. For regtest, you can use `test_client` and `test_secret`.
+	- `response_type` should always be `code`.
+	- For the possible `scope`'s, see below. These should be space-seperated (url-encoded space: `%20`).
+	The response should be a `302 Found` with the `Location` header equal to the redirect URL with the code in it
 
-# Scopes:
-WIP
+		`Location: localhost:8080/client_app?code=YOUR_CODE`
+- Fetch an access token and a refresh token using the authorization code obtained in the previous step `oauth/token`:
+	```
+	http -a test_client:test_secret -f POST https://api.regtest.getalby.com/oauth/token code=YOUR_CODE grant_type=authorization_code redirect_uri=localhost:8080/apps
+	HTTP/1.1 200 OK
+	{
+    "access_token": "your_access_token",
+    "expires_in": 7200,
+    "refresh_token": "your_refresh_token",
+    "scope": "balance:read",
+    "token_type": "Bearer"
+	}
+	```
+- Use the access token to make a request to the LNDhub API:
+	```
+	http https://api.regtest.getalby.com/v2/balance Authorization:"Bearer $your_access_token"
+	```
+	The API documentation can be found at `https://lndhub.regtest.getalby.com`. Be aware that the Host for the OAuth API must be changed to `api.regtest.getalby.com` (LNDhub cannot be accessed directly using tokens issued by the OAuth server).
+	Currently, only the scopes/routes listed below can be accessed.
+### Scopes:
+WIP, more to follow
 ```
 var scopes = map[string][]string{
 	"invoices:create":   {"/v2/invoices", "Create invoices on your behalf."},
@@ -32,3 +57,8 @@ var scopes = map[string][]string{
 	"balance:read":      {"/v2/balance", "Read your balance."},
 }
 ```
+To do:
+- refresh tokens
+- multiple origin servers for gateway
+- more scopes
+- budget feature
