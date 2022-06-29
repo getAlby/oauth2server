@@ -16,7 +16,7 @@ func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) 
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	tokenInfo, err := ctrl.oauthServer.Manager.LoadAccessToken(r.Context(), token)
 	if err != nil {
-		logrus.Errorf("Something went wrong loading access token: %s", err.Error())
+		logrus.Errorf("Something went wrong loading access token: %s, token %s, request %v", err.Error(), token, r)
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Something went wrong while authenticating user."))
 		return
