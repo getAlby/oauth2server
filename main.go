@@ -44,7 +44,7 @@ func main() {
 
 	gateways, err := initGateways(conf)
 	if err != nil {
-		logrus.Fatalf("Error initializing gateways", err)
+		logrus.Fatalf("Error initializing gateways %s", err.Error())
 	}
 	svc := &Service{
 		Config:      conf,
