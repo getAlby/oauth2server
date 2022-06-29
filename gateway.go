@@ -21,9 +21,7 @@ func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	//check scope
-	scopes := strings.Split(" ", tokenInfo.GetScope())
-	//todo
-	fmt.Println(scopes)
+	fmt.Println(tokenInfo.GetScope())
 	//mint and inject jwt token needed for origin server
 	//the request is dispatched immediately, so the tokens can have a short expiry
 	expirySeconds := 60

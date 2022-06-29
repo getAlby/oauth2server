@@ -68,7 +68,7 @@ func main() {
 	http.HandleFunc("/admin/clients", controller.ClientHandler)
 
 	//gateway
-	http.HandleFunc("/v2", controller.ApiGateway)
+	http.HandleFunc("/v2/", controller.ApiGateway)
 
 	logrus.Infof("Server starting on port %d", conf.Port)
 	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), nil))
@@ -87,7 +87,7 @@ func initGateways(conf *Config) (gateways map[string]*httputil.ReverseProxy, err
 
 func initStores(db string) (clientStore *pg.ClientStore, tokenStore *pg.TokenStore, err error) {
 	//connect database
-	pgxConn, err := pgx.Connect(context.TODO(), db)
+	pgxConn, err := pgx.Connect(context.Background(), db)
 	if err != nil {
 		return nil, nil, err
 	}

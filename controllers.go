@@ -69,9 +69,6 @@ func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http
 	if err != nil {
 		return "", err
 	}
-	if claims["scope"] != nil {
-		return "", fmt.Errorf("Cannot authenticate user, token not authorized for generating new tokens")
-	}
 	//todo change to sub, which should have string type
 	if claims["id"] == nil {
 		return "", fmt.Errorf("Cannot authenticate user, token does not contain user id")
