@@ -21,7 +21,6 @@ func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) 
 		w.Write([]byte("Something went wrong while authenticating user."))
 		return
 	}
-	fmt.Println(tokenInfo.GetUserID())
 	//check scope
 	//construct helper map
 	allowedRoutes := map[string]bool{}
@@ -55,7 +54,6 @@ func GenerateLNDHubAccessToken(secret []byte, expiryInSeconds int, userId string
 	//convert string to int
 	id, err := strconv.Atoi(userId)
 	if err != nil {
-		logrus.Error(err)
 		return "", err
 	}
 	claims := &LNDhubClaims{
@@ -69,7 +67,6 @@ func GenerateLNDHubAccessToken(secret []byte, expiryInSeconds int, userId string
 
 	t, err := token.SignedString(secret)
 	if err != nil {
-		logrus.Error(err)
 		return "", err
 	}
 
