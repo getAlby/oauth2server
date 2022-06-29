@@ -38,7 +38,7 @@ func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) 
 	expirySeconds := 60
 	lndhubToken, err := GenerateLNDHubAccessToken(ctrl.service.Config.JWTSecret, expirySeconds, tokenInfo.GetUserID())
 	if err != nil {
-		logrus.Errorf("Something went wrong loading access token: %s", err.Error())
+		logrus.Errorf("Something went wrong generating lndhub token: %s", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Something went wrong while authenticating user."))
 		return
@@ -54,6 +54,7 @@ func GenerateLNDHubAccessToken(secret []byte, expiryInSeconds int, userId string
 	//convert string to int
 	id, err := strconv.Atoi(userId)
 	if err != nil {
+		logrus.Error(err)
 		return "", err
 	}
 	claims := &LNDhubClaims{
@@ -67,6 +68,7 @@ func GenerateLNDHubAccessToken(secret []byte, expiryInSeconds int, userId string
 
 	t, err := token.SignedString(secret)
 	if err != nil {
+		logrus.Error(err)
 		return "", err
 	}
 
