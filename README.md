@@ -18,7 +18,7 @@ All examples are using [httpie](https://httpie.io)
 	```
 	Save the `access_token` in the response for the next step.
 
-- Make a request to the oauth server in order to get an access code. This should be made from the browser, as the responds redirects the client back to the client application.
+- Make a GET request to the oauth server in order to get an access code. This should be made from the browser, as the responds redirects the client back to the client application.
 	```
 	http https://api.regtest.getalby.com/oauth/authorize\?client_id=test_client\&response_type=code\&redirect_uri=localhost:8080/client_app\&scope\=balance:read Authorization:"Bearer $token"
 	```
@@ -29,7 +29,7 @@ All examples are using [httpie](https://httpie.io)
 	- `$token` should be the admin token obtained in the previous step.
   The response should be a `302 Found` with the `Location` header equal to the redirect URL with the code in it:
 	`Location: localhost:8080/client_app?code=YOUR_CODE`
-- Fetch an access token and a refresh token using the authorization code obtained in the previous step `oauth/token`:
+- Fetch an access token and a refresh token using the authorization code obtained in the previous step `oauth/token` by doing a HTTP POST request with form parameters:
 	```
 	http -a test_client:test_secret 
 	-f POST https://api.regtest.getalby.com/oauth/token
@@ -47,7 +47,7 @@ All examples are using [httpie](https://httpie.io)
     "token_type": "Bearer"
 	}
 	```
-	Use the client_id and the client_secret as basic authentication, and use HTTP form parameters. Use the same redirect_uri as you used in the previous step.
+	Use the client_id and the client_secret as basic authentication. Use the same redirect_uri as you used in the previous step.
 ### Scopes:
 WIP, more to follow
 ```
@@ -64,7 +64,7 @@ var scopes = map[string][]string{
 	http https://api.regtest.getalby.com/v2/balance Authorization:"Bearer $your_access_token"
 	```
 	The API documentation can be found at https://lndhub.regtest.getalby.com. Be aware that the Host for the OAuth API must be changed to `api.regtest.getalby.com` (LNDhub cannot be accessed directly using tokens issued by the OAuth server).
-	Currently, only the scopes/routes listed below can be accessed.
+	Currently, only the scopes/routes listed above can be accessed.
 
 To do:
 - refresh tokens
