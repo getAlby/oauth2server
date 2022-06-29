@@ -21,6 +21,7 @@ func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) 
 		w.Write([]byte("Something went wrong while authenticating user."))
 		return
 	}
+	fmt.Println(tokenInfo.GetUserID())
 	//check scope
 	//construct helper map
 	allowedRoutes := map[string]bool{}
