@@ -26,14 +26,11 @@ type Service struct {
 	gateways    map[string]*httputil.ReverseProxy
 }
 
-var scopes = map[string]string{
-	"invoices:create":           "Create invoices on your behalf.",
-	"invoices:read":             "Read your invoice history, get realtime updates on newly paid invoices.",
-	"invoices:keysend:create":   "Fetch information needed for receiving value4value donations (pubkey, customKey/customValue).",
-	"invoices:keysend:read":     "Read your incoming keysend payments and boostagrams.",
-	"transactions:read":         "Read your outgoing transaction history and check payment status.",
-	"transactions:keysend:read": "Read your outgoing keysend payments and boostagrams.",
-	"balance:read":              "Read your balance.",
+var scopes = map[string][]string{
+	"invoices:create":   {"/v2/invoices", "Create invoices on your behalf."},
+	"invoices:read":     {"/v2/invoices/incoming", "Read your invoice history, get realtime updates on newly paid invoices."},
+	"transactions:read": {"/v2/invoices/outgoing", "Read your outgoing transaction history and check payment status."},
+	"balance:read":      {"/v2/balance", "Read your balance."},
 }
 
 func (ctrl *OAuthController) AuthorizationHandler(w http.ResponseWriter, r *http.Request) {

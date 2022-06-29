@@ -17,24 +17,36 @@ func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) 
 	tokenInfo, err := ctrl.oauthServer.Manager.LoadAccessToken(r.Context(), token)
 	if err != nil {
 		logrus.Errorf("Something went wrong loading access token: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Something went wrong while authenticating user."))
 		return
 	}
 	//check scope
-	fmt.Println(tokenInfo.GetScope())
+	//construct helper map
+	allowedRoutes := map[string]bool{}
+	for _, sc := range strings.Split(tokenInfo.GetScope(), " ") {
+		allowedRoutes[scopes[sc][0]] = true
+	}
+	//check if route is allowed
+	if _, found := allowedRoutes[r.URL.Path]; !found {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte("Token does not have the right scope for operation"))
+		return
+	}
 	//mint and inject jwt token needed for origin server
 	//the request is dispatched immediately, so the tokens can have a short expiry
 	expirySeconds := 60
 	lndhubToken, err := GenerateLNDHubAccessToken(ctrl.service.Config.JWTSecret, expirySeconds, tokenInfo.GetUserID())
 	if err != nil {
 		logrus.Errorf("Something went wrong loading access token: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Something went wrong while authenticating user."))
 		return
 	}
 	//inject lndhub token in request
 	r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", lndhubToken))
 	//route to origin server
-	ctrl.service.gateways["/v2"].ServeHTTP(w, r)
+	ctrl.service.gateways["/v2/"].ServeHTTP(w, r)
 }
 
 // GenerateAccessToken : Generate Access Token

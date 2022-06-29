@@ -21,3 +21,14 @@ curl --compressed -v https://getalby.com/v1/oauth/tokens \
 	-d "redirect_uri=https://www.example.com"
 ```
 and responds with an access token and a refresh token.
+
+# Scopes:
+WIP
+```
+var scopes = map[string][]string{
+	"invoices:create":   {"/v2/invoices", "Create invoices on your behalf."},
+	"invoices:read":     {"/v2/invoices/incoming", "Read your invoice history, get realtime updates on newly paid invoices."},
+	"transactions:read": {"/v2/invoices/outgoing", "Read your outgoing transaction history and check payment status."},
+	"balance:read":      {"/v2/balance", "Read your balance."},
+}
+```

@@ -81,7 +81,7 @@ func initGateways(conf *Config) (gateways map[string]*httputil.ReverseProxy, err
 		return nil, err
 	}
 	return map[string]*httputil.ReverseProxy{
-		"/v2": httputil.NewSingleHostReverseProxy(lndhubUrl),
+		"/v2/": httputil.NewSingleHostReverseProxy(lndhubUrl),
 	}, nil
 }
 
