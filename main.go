@@ -31,6 +31,7 @@ func main() {
 	if err != nil {
 		logrus.Fatalf("Error loading environment variables: %v", err)
 	}
+	logrus.SetReportCaller(true)
 
 	manager := manage.NewDefaultManager()
 	manager.SetAuthorizeCodeTokenCfg(manage.DefaultAuthorizeCodeTokenCfg)
