@@ -1,6 +1,6 @@
-This service consists out of 2 pieces: an OAuth server issueing tokens and an API Gateway that is secured by these tokens.
+This service consists out of 2 pieces: an OAuth server issuing tokens and an API Gateway that is secured by these tokens.
 
-Deployed on regtest at `api.regtest.getalby.com`.
+Deployed on regtest at `https://api.regtest.getalby.com`.
 ## OAuth2 server
 This service is responsible for generating access tokens, so Alby users can authorize 3rd party applications
 to access the Alby Wallet API in their name. Possible use-cases include:
@@ -26,9 +26,9 @@ All examples are using `httpie`
 	- You will need a `client_id` and a `client_secret`. For regtest, you can use `test_client` and `test_secret`.
 	- `response_type` should always be `code`.
 	- For the possible `scope`'s, see below. These should be space-seperated (url-encoded space: `%20`).
-	The response should be a `302 Found` with the `Location` header equal to the redirect URL with the code in it
-
-		`Location: localhost:8080/client_app?code=YOUR_CODE`
+	- `$token` should be the admin token obtained in the previous step.
+  The response should be a `302 Found` with the `Location` header equal to the redirect URL with the code in it:
+	`Location: localhost:8080/client_app?code=YOUR_CODE`
 - Fetch an access token and a refresh token using the authorization code obtained in the previous step `oauth/token`:
 	```
 	http -a test_client:test_secret -f POST https://api.regtest.getalby.com/oauth/token code=YOUR_CODE grant_type=authorization_code redirect_uri=localhost:8080/apps
@@ -41,12 +41,6 @@ All examples are using `httpie`
     "token_type": "Bearer"
 	}
 	```
-- Use the access token to make a request to the LNDhub API:
-	```
-	http https://api.regtest.getalby.com/v2/balance Authorization:"Bearer $your_access_token"
-	```
-	The API documentation can be found at `https://lndhub.regtest.getalby.com`. Be aware that the Host for the OAuth API must be changed to `api.regtest.getalby.com` (LNDhub cannot be accessed directly using tokens issued by the OAuth server).
-	Currently, only the scopes/routes listed below can be accessed.
 ### Scopes:
 WIP, more to follow
 ```
@@ -57,6 +51,14 @@ var scopes = map[string][]string{
 	"balance:read":      {"/v2/balance", "Read your balance."},
 }
 ```
+## API Gateway
+- Use the access token to make a request to the LNDhub API:
+	```
+	http https://api.regtest.getalby.com/v2/balance Authorization:"Bearer $your_access_token"
+	```
+	The API documentation can be found at https://lndhub.regtest.getalby.com. Be aware that the Host for the OAuth API must be changed to `api.regtest.getalby.com` (LNDhub cannot be accessed directly using tokens issued by the OAuth server).
+	Currently, only the scopes/routes listed below can be accessed.
+
 To do:
 - refresh tokens
 - multiple origin servers for gateway
