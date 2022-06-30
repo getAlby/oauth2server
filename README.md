@@ -14,7 +14,7 @@ to access the Alby Wallet API in their name. Possible use-cases include:
 All examples are using [httpie](https://httpie.io)
 - Make a POST request to the oauth server in order to get an access code. This should be made from the browser, as the responds redirects the client back to the client application.
 	```
-	http POST https://api.regtest.getalby.com/oauth/authorize\?client_id=test_client\&response_type=code\&redirect_uri=localhost:8080/client_app\&scope\=balance:read -f username=$username password=$password
+	http -f POST https://api.regtest.getalby.com/oauth/authorize\?client_id=test_client\&response_type=code\&redirect_uri=localhost:8080/client_app\&scope\=balance:read username=$username password=$password
 	```
 	- `redirect_uri` should be a web or native uri where the client should be redirected once the authorization is complete.
 	- You will need a `client_id` and a `client_secret`. For regtest, you can use `test_client` and `test_secret`.
