@@ -12,21 +12,15 @@ to access the Alby Wallet API in their name. Possible use-cases include:
 
 ### Getting started
 All examples are using [httpie](https://httpie.io)
-- Get an "admin" token for your lndhub account using your lndhub login and password:
-	```
-	http POST https://lndhub.regtest.getalby.com/auth login=$login password=$password
-	```
-	Save the `access_token` in the response for the next step.
-
 - Make a GET request to the oauth server in order to get an access code. This should be made from the browser, as the responds redirects the client back to the client application.
 	```
-	http https://api.regtest.getalby.com/oauth/authorize\?client_id=test_client\&response_type=code\&redirect_uri=localhost:8080/client_app\&scope\=balance:read Authorization:"Bearer $token"
+	http POST https://api.regtest.getalby.com/oauth/authorize\?client_id=test_client\&response_type=code\&redirect_uri=localhost:8080/client_app\&scope\=balance:read -f username=$username password=$password
 	```
 	- `redirect_uri` should be a web or native uri where the client should be redirected once the authorization is complete.
 	- You will need a `client_id` and a `client_secret`. For regtest, you can use `test_client` and `test_secret`.
 	- `response_type` should always be `code`.
 	- For the possible `scope`'s, see below. These should be space-seperated (url-encoded space: `%20`).
-	- `$token` should be the admin token obtained in the previous step.
+	- `$username` and `$password` should be your LNDHub username(= login) and password.
   The response should be a `302 Found` with the `Location` header equal to the redirect URL with the code in it:
 	`Location: localhost:8080/client_app?code=YOUR_CODE`
 - Fetch an access token and a refresh token using the authorization code obtained in the previous step `oauth/token` by doing a HTTP POST request with form parameters:

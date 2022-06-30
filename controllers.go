@@ -56,8 +56,10 @@ func (ctrl *OAuthController) InternalErrorHandler(err error) (re *errors.Respons
 	}
 }
 func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http.Request) (userID string, err error) {
-	token := r.Header.Get("Authorization")
-	token = strings.TrimPrefix(token, "Bearer ")
+	token, login, err := ctrl.authenticateUser(r)
+	if err != nil {
+		return "", err
+	}
 
 	claims := jwt.MapClaims{}
 	_, err = jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
@@ -66,11 +68,42 @@ func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http
 	if err != nil {
 		return "", err
 	}
-	//todo change to sub, which should have string type
 	if claims["id"] == nil {
 		return "", fmt.Errorf("Cannot authenticate user, token does not contain user id")
 	}
-	return fmt.Sprintf("%.0f", claims["id"].(float64)), nil
+	//here be dragons
+	//todo do this better, this is a hack
+	//user id is stored as <ID>_<LOGIN>, in order to contain information that can be understood by both the rails app and lndhub
+	return fmt.Sprintf("%.0f_%s", claims["id"].(float64), login), nil
+}
+
+func (ctrl *OAuthController) authenticateUser(r *http.Request) (token, login string, err error) {
+	//look for username/password in form data
+	err = r.ParseForm()
+	if err != nil {
+		return "", "", fmt.Errorf("Error parsing form data %s", err.Error())
+	}
+	username := r.Form.Get("username")
+	password := r.Form.Get("password")
+
+	if username == "" || password == "" {
+		return "", "", fmt.Errorf("Cannot authenticate user, username or password missing.")
+	}
+	//authenticate user against lndhub
+	resp, err := http.Post(fmt.Sprintf("%s/auth", ctrl.service.Config.LndHubUrl), "application/json", strings.NewReader(r.Form.Encode()))
+	if err != nil {
+		return "", "", fmt.Errorf("Error authenticating user %s", err.Error())
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", "", fmt.Errorf("Cannot authenticate user, username or password wrong.")
+	}
+	//return access code
+	tokenResponse := &TokenResponse{}
+	err = json.NewDecoder(resp.Body).Decode(tokenResponse)
+	if err != nil {
+		return "", "", fmt.Errorf("Error authenticating user %s", err.Error())
+	}
+	return tokenResponse.AccessToken, login, nil
 }
 
 func (ctrl *OAuthController) ClientHandler(w http.ResponseWriter, r *http.Request) {
@@ -129,4 +162,8 @@ func (ctrl *OAuthController) AuthorizeScopeHandler(w http.ResponseWriter, r *htt
 		}
 	}
 	return requestedScope, nil
+}
+
+type TokenResponse struct {
+	AccessToken string `json:"access_token"`
 }
