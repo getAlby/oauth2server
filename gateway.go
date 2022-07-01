@@ -37,7 +37,7 @@ func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) 
 	//the request is dispatched immediately, so the tokens can have a short expiry
 	expirySeconds := 60
 	//extract right id from the stored "double" id
-	lndhubId := strings.Split(tokenInfo.GetUserID(), "_")[1]
+	lndhubId := strings.Split(tokenInfo.GetUserID(), "_")[0]
 	lndhubToken, err := GenerateLNDHubAccessToken(ctrl.service.Config.JWTSecret, expirySeconds, lndhubId)
 	if err != nil {
 		logrus.Errorf("Something went wrong generating lndhub token: %s", err.Error())
