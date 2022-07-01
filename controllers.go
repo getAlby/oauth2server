@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"strings"
+	"text/template"
 
 	"github.com/go-oauth2/oauth2/v4/errors"
 	"github.com/go-oauth2/oauth2/v4/models"
@@ -163,7 +164,32 @@ func (ctrl *OAuthController) AuthorizeScopeHandler(w http.ResponseWriter, r *htt
 	}
 	return requestedScope, nil
 }
+func (ctrl *OAuthController) DemoAuthorizeHandler(w http.ResponseWriter, r *http.Request) {
+	clientId := r.URL.Query().Get("client_id")
+	redirectUrl := r.URL.Query().Get("redirect_url")
+	requestedScopes := r.URL.Query().Get("scope")
+	scopeList := strings.Split(requestedScopes, " ")
+	scopeDescriptions := []string{}
+	for _, sc := range scopeList {
+		scopeDescriptions = append(scopeDescriptions, scopes[sc][1])
+	}
+	tmpl := template.Must(template.ParseFiles("static/auth.html"))
 
+	data := AuthorizePageData{
+		Scopes:      scopeDescriptions,
+		ClientName:  clientId,
+		RedirectUrl: redirectUrl,
+		Scope:       requestedScopes,
+	}
+	tmpl.Execute(w, data)
+}
+
+type AuthorizePageData struct {
+	Scopes      []string
+	ClientName  string
+	RedirectUrl string
+	Scope       string
+}
 type TokenResponse struct {
 	AccessToken string `json:"access_token"`
 }

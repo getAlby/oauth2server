@@ -71,6 +71,9 @@ func main() {
 	//gateway
 	http.HandleFunc("/v2/", controller.ApiGateway)
 
+	//only for demo purposes, remove later
+	http.HandleFunc("/authorize", controller.DemoAuthorizeHandler)
+
 	logrus.Infof("Server starting on port %d", conf.Port)
 	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), nil))
 }
