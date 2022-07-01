@@ -77,13 +77,13 @@ func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http
 	return fmt.Sprintf("%.0f_%s", claims["id"].(float64), login), nil
 }
 
-func (ctrl *OAuthController) authenticateUser(r *http.Request) (token, login string, err error) {
+func (ctrl *OAuthController) authenticateUser(r *http.Request) (token, username string, err error) {
 	//look for username/password in form data
 	err = r.ParseForm()
 	if err != nil {
 		return "", "", fmt.Errorf("Error parsing form data %s", err.Error())
 	}
-	username := r.Form.Get("username")
+	username = r.Form.Get("username")
 	password := r.Form.Get("password")
 
 	if username == "" || password == "" {
@@ -103,7 +103,7 @@ func (ctrl *OAuthController) authenticateUser(r *http.Request) (token, login str
 	if err != nil {
 		return "", "", fmt.Errorf("Error authenticating user %s", err.Error())
 	}
-	return tokenResponse.AccessToken, login, nil
+	return tokenResponse.AccessToken, username, nil
 }
 
 func (ctrl *OAuthController) ClientHandler(w http.ResponseWriter, r *http.Request) {
