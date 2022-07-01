@@ -90,7 +90,7 @@ func (ctrl *OAuthController) authenticateUser(r *http.Request) (token, login str
 		return "", "", fmt.Errorf("Cannot authenticate user, username or password missing.")
 	}
 	//authenticate user against lndhub
-	resp, err := http.Post(fmt.Sprintf("%s/auth", ctrl.service.Config.LndHubUrl), "application/json", strings.NewReader(r.Form.Encode()))
+	resp, err := http.PostForm(fmt.Sprintf("%s/auth", ctrl.service.Config.LndHubUrl), r.Form)
 	if err != nil {
 		return "", "", fmt.Errorf("Error authenticating user %s", err.Error())
 	}
