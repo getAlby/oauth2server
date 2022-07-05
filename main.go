@@ -43,14 +43,13 @@ func main() {
 	manager.MapClientStorage(clientStore)
 	manager.MapTokenStorage(tokenStore)
 
-	gateways, err := initGateways(conf)
-	if err != nil {
-		logrus.Fatalf("Error initializing gateways %s", err.Error())
-	}
 	svc := &Service{
 		Config:      conf,
 		clientStore: clientStore,
-		gateways:    gateways,
+	}
+	err = svc.initGateways()
+	if err != nil {
+		logrus.Fatal(err)
 	}
 
 	srv := server.NewServer(server.NewConfig(), manager)
@@ -69,7 +68,7 @@ func main() {
 	http.HandleFunc("/admin/clients", controller.ClientHandler)
 
 	//gateway
-	http.HandleFunc("/v2/", controller.ApiGateway)
+	http.HandleFunc("/", controller.ApiGateway)
 
 	//only for demo purposes, remove later
 	http.HandleFunc("/authorize", controller.DemoAuthorizeHandler)
@@ -78,15 +77,27 @@ func main() {
 	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), nil))
 }
 
-//hard-code lndhub origin server for now
-func initGateways(conf *Config) (gateways map[string]*httputil.ReverseProxy, err error) {
-	lndhubUrl, err := url.Parse(conf.LndHubUrl)
+//hard-code origin servers for now
+func (svc *Service) initGateways() error {
+	lndhubUrl, err := url.Parse(svc.Config.LndHubUrl)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return map[string]*httputil.ReverseProxy{
-		"/v2/": httputil.NewSingleHostReverseProxy(lndhubUrl),
-	}, nil
+	getalbyComUrl, err := url.Parse(svc.Config.GetalbyComUrl)
+	if err != nil {
+		return err
+	}
+	svc.gateways = map[string]*OriginServer{
+		"/ln": {
+			proxy:            httputil.NewSingleHostReverseProxy(lndhubUrl),
+			headerInjectFunc: svc.InjectLNDhubAccessToken,
+		},
+		"/accounts": {
+			proxy:            httputil.NewSingleHostReverseProxy(getalbyComUrl),
+			headerInjectFunc: svc.InjectGetalbycomHeader,
+		},
+	}
+	return nil
 }
 
 func initStores(db string) (clientStore *pg.ClientStore, tokenStore *pg.TokenStore, err error) {

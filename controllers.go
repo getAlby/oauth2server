@@ -8,6 +8,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/go-oauth2/oauth2/v4"
 	"github.com/go-oauth2/oauth2/v4/errors"
 	"github.com/go-oauth2/oauth2/v4/models"
 	"github.com/go-oauth2/oauth2/v4/server"
@@ -21,17 +22,22 @@ type OAuthController struct {
 	service     *Service
 }
 
+type OriginServer struct {
+	proxy            *httputil.ReverseProxy
+	headerInjectFunc func(tokenInfo oauth2.TokenInfo, r *http.Request) error
+}
 type Service struct {
 	Config      *Config
 	clientStore *pg.ClientStore
-	gateways    map[string]*httputil.ReverseProxy
+	gateways    map[string]*OriginServer
 }
 
 var scopes = map[string][]string{
-	"invoices:create":   {"/v2/invoices", "Create invoices on your behalf."},
-	"invoices:read":     {"/v2/invoices/incoming", "Read your invoice history, get realtime updates on newly paid invoices."},
-	"transactions:read": {"/v2/invoices/outgoing", "Read your outgoing transaction history and check payment status."},
-	"balance:read":      {"/v2/balance", "Read your balance."},
+	"invoices:create":   {"/ln/v2/invoices", "Create invoices on your behalf."},
+	"account:read":      {"/accounts/value4value", "Read your LN Address and value block information."},
+	"invoices:read":     {"/ln/v2/invoices/incoming", "Read your invoice history, get realtime updates on newly paid invoices."},
+	"transactions:read": {"/ln/v2/invoices/outgoing", "Read your outgoing transaction history and check payment status."},
+	"balance:read":      {"/ln/v2/balance", "Read your balance."},
 }
 
 func (ctrl *OAuthController) AuthorizationHandler(w http.ResponseWriter, r *http.Request) {
