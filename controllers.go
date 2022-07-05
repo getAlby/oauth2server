@@ -33,8 +33,8 @@ type Service struct {
 }
 
 var scopes = map[string][]string{
-	"invoices:create":   {"/ln/v2/invoices", "Create invoices on your behalf."},
 	"account:read":      {"/accounts/value4value", "Read your LN Address and value block information."},
+	"invoices:create":   {"/ln/v2/invoices", "Create invoices on your behalf."},
 	"invoices:read":     {"/ln/v2/invoices/incoming", "Read your invoice history, get realtime updates on newly paid invoices."},
 	"transactions:read": {"/ln/v2/invoices/outgoing", "Read your outgoing transaction history and check payment status."},
 	"balance:read":      {"/ln/v2/balance", "Read your balance."},

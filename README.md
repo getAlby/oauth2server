@@ -61,7 +61,6 @@ var scopes = map[string][]string{
 	Currently, only the scopes/routes listed above can be accessed.
 
 To do:
-- refresh tokens
-- multiple origin servers for gateway
 - more scopes
+- websocket proxy
 - budget feature
