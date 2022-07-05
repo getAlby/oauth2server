@@ -187,7 +187,10 @@ func (ctrl *OAuthController) DemoAuthorizeHandler(w http.ResponseWriter, r *http
 		RedirectUrl: redirectUrl,
 		Scope:       requestedScopes,
 	}
-	tmpl.Execute(w, data)
+	err := tmpl.Execute(w, data)
+	if err != nil {
+		logrus.Error(err)
+	}
 }
 
 type AuthorizePageData struct {

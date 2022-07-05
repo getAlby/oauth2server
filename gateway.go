@@ -19,7 +19,10 @@ func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		logrus.Errorf("Something went wrong loading access token: %s, token %s, request %v", err.Error(), token, r)
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Something went wrong while authenticating user."))
+		_, err = w.Write([]byte("Something went wrong while authenticating user."))
+		if err != nil {
+			logrus.Error(err)
+		}
 		return
 	}
 	//check scope
@@ -31,7 +34,10 @@ func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) 
 	//check if route is allowed
 	if _, found := allowedRoutes[r.URL.Path]; !found {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Token does not have the right scope for operation"))
+		_, err = w.Write([]byte("Token does not have the right scope for operation"))
+		if err != nil {
+			logrus.Error(err)
+		}
 		return
 	}
 	//extract first part of path
@@ -43,7 +49,10 @@ func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		logrus.Errorf("Something went wrong generating lndhub token: %s", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Something went wrong while authenticating user."))
+		_, err = w.Write([]byte("Something went wrong while authenticating user."))
+		if err != nil {
+			logrus.Error(err)
+		}
 		return
 	}
 	//trim first path segment first, the origin server does not know about it
