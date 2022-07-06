@@ -66,6 +66,7 @@ func (svc *Service) InjectGetalbycomHeader(token oauth2.TokenInfo, r *http.Reque
 	lndhubLogin := strings.Split(token.GetUserID(), "_")[1]
 	//set in header
 	r.Header.Set("UserID", lndhubLogin)
+	r.SetBasicAuth(svc.Config.GetalbyComUsername, svc.Config.GetalbyComPassword)
 	return nil
 }
 
