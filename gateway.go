@@ -45,6 +45,14 @@ func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) 
 	firstPathSegment := strings.Split(r.URL.Path, "/")[1]
 	firstPathSegment = fmt.Sprintf("/%s", firstPathSegment)
 	originServer := ctrl.service.gateways[firstPathSegment]
+	if originServer == nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_, err = w.Write([]byte("Could not find resource"))
+		if err != nil {
+			logrus.Error(err)
+		}
+		return
+	}
 	err = originServer.headerInjectFunc(tokenInfo, r)
 	if err != nil {
 		logrus.Errorf("Something went wrong generating lndhub token: %s", err.Error())

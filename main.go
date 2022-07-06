@@ -92,7 +92,7 @@ func (svc *Service) initGateways() error {
 			proxy:            httputil.NewSingleHostReverseProxy(lndhubUrl),
 			headerInjectFunc: svc.InjectLNDhubAccessToken,
 		},
-		"/accounts": {
+		"/api": {
 			proxy:            httputil.NewSingleHostReverseProxy(getalbyComUrl),
 			headerInjectFunc: svc.InjectGetalbycomHeader,
 		},
