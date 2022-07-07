@@ -84,17 +84,17 @@ func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http
 	return fmt.Sprintf("%.0f_%s", claims["id"].(float64), login), nil
 }
 
-func (ctrl *OAuthController) authenticateUser(r *http.Request) (token, username string, err error) {
-	//look for username/password in form data
+func (ctrl *OAuthController) authenticateUser(r *http.Request) (token, login string, err error) {
+	//look for login/password in form data
 	err = r.ParseForm()
 	if err != nil {
 		return "", "", fmt.Errorf("Error parsing form data %s", err.Error())
 	}
-	username = r.Form.Get("username")
+	login = r.Form.Get("login")
 	password := r.Form.Get("password")
 
-	if username == "" || password == "" {
-		return "", "", fmt.Errorf("Cannot authenticate user, username or password missing.")
+	if login == "" || password == "" {
+		return "", "", fmt.Errorf("Cannot authenticate user, login or password missing.")
 	}
 	//authenticate user against lndhub
 	resp, err := http.PostForm(fmt.Sprintf("%s/auth", ctrl.service.Config.LndHubUrl), r.Form)
@@ -102,7 +102,7 @@ func (ctrl *OAuthController) authenticateUser(r *http.Request) (token, username 
 		return "", "", fmt.Errorf("Error authenticating user %s", err.Error())
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("Cannot authenticate user, username or password wrong.")
+		return "", "", fmt.Errorf("Cannot authenticate user, login or password wrong.")
 	}
 	//return access code
 	tokenResponse := &TokenResponse{}
@@ -110,7 +110,7 @@ func (ctrl *OAuthController) authenticateUser(r *http.Request) (token, username 
 	if err != nil {
 		return "", "", fmt.Errorf("Error authenticating user %s", err.Error())
 	}
-	return tokenResponse.AccessToken, username, nil
+	return tokenResponse.AccessToken, login, nil
 }
 
 func (ctrl *OAuthController) ClientHandler(w http.ResponseWriter, r *http.Request) {
