@@ -159,7 +159,7 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 }
 
 func (ctrl *OAuthController) AuthorizeScopeHandler(w http.ResponseWriter, r *http.Request) (scope string, err error) {
-	requestedScope := r.URL.Query().Get("scope")
+	requestedScope := r.FormValue("scope")
 	if requestedScope == "" {
 		return "", fmt.Errorf("Empty scope is not allowed")
 	}
