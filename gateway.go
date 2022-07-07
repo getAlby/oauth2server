@@ -53,7 +53,7 @@ func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
-	err = originServer.headerInjectFunc(tokenInfo, r)
+	err = ctrl.service.InjectJWTAccessToken(tokenInfo, r)
 	if err != nil {
 		logrus.Errorf("Something went wrong generating lndhub token: %s", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
@@ -66,19 +66,10 @@ func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) 
 	//trim first path segment first, the origin server does not know about it
 	r.URL.Path = strings.TrimPrefix(r.URL.Path, firstPathSegment)
 	//route to origin server
-	originServer.proxy.ServeHTTP(w, r)
+	originServer.ServeHTTP(w, r)
 }
 
-func (svc *Service) InjectGetalbycomHeader(token oauth2.TokenInfo, r *http.Request) error {
-	//extract lndhub login from the stored double id
-	lndhubLogin := strings.Split(token.GetUserID(), "_")[1]
-	//set in header
-	r.Header.Set("UserID", lndhubLogin)
-	r.SetBasicAuth(svc.Config.GetalbyComUsername, svc.Config.GetalbyComPassword)
-	return nil
-}
-
-func (svc *Service) InjectLNDhubAccessToken(token oauth2.TokenInfo, r *http.Request) error {
+func (svc *Service) InjectJWTAccessToken(token oauth2.TokenInfo, r *http.Request) error {
 	//mint and inject jwt token needed for origin server
 	//the request is dispatched immediately, so the tokens can have a short expiry
 	expirySeconds := 60

@@ -8,7 +8,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/go-oauth2/oauth2/v4"
 	"github.com/go-oauth2/oauth2/v4/errors"
 	"github.com/go-oauth2/oauth2/v4/models"
 	"github.com/go-oauth2/oauth2/v4/server"
@@ -22,14 +21,10 @@ type OAuthController struct {
 	service     *Service
 }
 
-type OriginServer struct {
-	proxy            *httputil.ReverseProxy
-	headerInjectFunc func(tokenInfo oauth2.TokenInfo, r *http.Request) error
-}
 type Service struct {
 	Config      *Config
 	clientStore *pg.ClientStore
-	gateways    map[string]*OriginServer
+	gateways    map[string]*httputil.ReverseProxy
 }
 
 var scopes = map[string][]string{

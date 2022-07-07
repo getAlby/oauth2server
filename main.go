@@ -87,15 +87,9 @@ func (svc *Service) initGateways() error {
 	if err != nil {
 		return err
 	}
-	svc.gateways = map[string]*OriginServer{
-		"/ln": {
-			proxy:            httputil.NewSingleHostReverseProxy(lndhubUrl),
-			headerInjectFunc: svc.InjectLNDhubAccessToken,
-		},
-		"/api": {
-			proxy:            httputil.NewSingleHostReverseProxy(getalbyComUrl),
-			headerInjectFunc: svc.InjectGetalbycomHeader,
-		},
+	svc.gateways = map[string]*httputil.ReverseProxy{
+		"/ln":  httputil.NewSingleHostReverseProxy(lndhubUrl),
+		"/api": httputil.NewSingleHostReverseProxy(getalbyComUrl),
 	}
 	return nil
 }
