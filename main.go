@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v4"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
@@ -58,11 +59,12 @@ func main() {
 	srv.SetInternalErrorHandler(controller.InternalErrorHandler)
 	srv.SetAuthorizeScopeHandler(controller.AuthorizeScopeHandler)
 
-	http.HandleFunc("/oauth/authorize", controller.AuthorizationHandler)
-	http.HandleFunc("/oauth/token", controller.TokenHandler)
+	r := mux.NewRouter()
+	r.HandleFunc("/oauth/authorize", controller.AuthorizationHandler)
+	r.HandleFunc("/oauth/token", controller.TokenHandler)
 
 	//should not be publicly accesible
-	http.HandleFunc("/admin/clients", controller.ClientHandler)
+	r.HandleFunc("/admin/clients", controller.CreateClientHandler).Methods(http.MethodPost)
 
 	//Initialize API gateway
 	gateways, err := svc.initGateways()
@@ -70,11 +72,11 @@ func main() {
 		logrus.Fatal(err)
 	}
 	for _, gw := range gateways {
-		http.Handle(gw.MatchRoute, gw)
+		r.Handle(gw.MatchRoute, gw)
 	}
 
 	logrus.Infof("Server starting on port %d", conf.Port)
-	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), nil))
+	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), r))
 }
 
 func (svc *Service) initGateways() (result []*OriginServer, err error) {

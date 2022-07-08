@@ -48,7 +48,7 @@ func (ctrl *OAuthController) InternalErrorHandler(err error) (re *errors.Respons
 	}
 }
 func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http.Request) (userID string, err error) {
-	token, login, err := ctrl.authenticateUser(r)
+	token, err := ctrl.authenticateUser(r)
 	if err != nil {
 		return "", err
 	}
@@ -63,57 +63,37 @@ func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http
 	if claims["id"] == nil {
 		return "", fmt.Errorf("Cannot authenticate user, token does not contain user id")
 	}
-	//here be dragons
-	//todo do this better, this is a hack
-	//user id is stored as <ID>_<LOGIN>, in order to contain information that can be understood by both the rails app and lndhub
-	return fmt.Sprintf("%.0f_%s", claims["id"].(float64), login), nil
+	return fmt.Sprintf("%.0f", claims["id"].(float64)), nil
 }
 
-func (ctrl *OAuthController) authenticateUser(r *http.Request) (token, login string, err error) {
+func (ctrl *OAuthController) authenticateUser(r *http.Request) (token string, err error) {
 	//look for login/password in form data
 	err = r.ParseForm()
 	if err != nil {
-		return "", "", fmt.Errorf("Error parsing form data %s", err.Error())
+		return "", fmt.Errorf("Error parsing form data %s", err.Error())
 	}
-	login = r.Form.Get("login")
+	login := r.Form.Get("login")
 	password := r.Form.Get("password")
 
 	if login == "" || password == "" {
-		return "", "", fmt.Errorf("Cannot authenticate user, login or password missing.")
+		return "", fmt.Errorf("Cannot authenticate user, login or password missing.")
 	}
 	//authenticate user against lndhub
 	resp, err := http.PostForm(fmt.Sprintf("%s/auth", ctrl.service.Config.LndHubUrl), r.Form)
 	if err != nil {
-		return "", "", fmt.Errorf("Error authenticating user %s", err.Error())
+		return "", fmt.Errorf("Error authenticating user %s", err.Error())
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", "", fmt.Errorf("Cannot authenticate user, login or password wrong.")
+		return "", fmt.Errorf("Cannot authenticate user, login or password wrong.")
 	}
 	//return access code
 	tokenResponse := &TokenResponse{}
 	err = json.NewDecoder(resp.Body).Decode(tokenResponse)
 	if err != nil {
-		return "", "", fmt.Errorf("Error authenticating user %s", err.Error())
+		return "", fmt.Errorf("Error authenticating user %s", err.Error())
 	}
-	return tokenResponse.AccessToken, login, nil
+	return tokenResponse.AccessToken, nil
 }
-
-func (ctrl *OAuthController) ClientHandler(w http.ResponseWriter, r *http.Request) {
-
-	switch r.Method {
-	case http.MethodPost:
-		ctrl.CreateClientHandler(w, r)
-		return
-	default:
-		_, err := w.Write([]byte("Method not supported"))
-		if err != nil {
-			logrus.Error(err)
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-}
-
 func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.Request) {
 	clientInfo := &models.Client{}
 	err := json.NewDecoder(r.Body).Decode(clientInfo)

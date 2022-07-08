@@ -68,8 +68,7 @@ func (svc *Service) InjectJWTAccessToken(token oauth2.TokenInfo, r *http.Request
 	//mint and inject jwt token needed for origin server
 	//the request is dispatched immediately, so the tokens can have a short expiry
 	expirySeconds := 60
-	//extract right id from the stored "double" id
-	lndhubId := strings.Split(token.GetUserID(), "_")[0]
+	lndhubId := token.GetUserID()
 	lndhubToken, err := GenerateLNDHubAccessToken(svc.Config.JWTSecret, expirySeconds, lndhubId)
 	if err != nil {
 		return err
