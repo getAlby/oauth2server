@@ -1,4 +1,5 @@
 This service consists out of 2 pieces: an OAuth server issuing tokens and an API Gateway that is secured by these tokens.
+The service is supposed to be run together with lndhub.go, but could support multiple backends of any kind.
 
 Deployed on regtest at `https://api.regtest.getalby.com`.
 ## OAuth2 server
@@ -42,20 +43,22 @@ All examples are using [httpie](https://httpie.io)
 	}
 	```
 	Use the client_id and the client_secret as basic authentication. Use the same redirect_uri as you used in the previous step.
-### Scopes:
+### Scopes and endpoints:
 WIP, more to follow
+| Endpoint | Scope | Description |
+|----------|-------|-------------|
+| POST `/invoices`  | `invoices:create`  | Create invoices |
+| GET `/invoices/incoming`  | `invoices:read`  | Read incoming payment history |
+| GET `/invoices/outgoing`  | `transactions:read`  | Read outgoing payment history |
+| GET `/invoices/{payment_hash}`  | `invoices:create`  | Get details about a specific invoice by payment hash |
+| GET `/balance`  | `balance:read`  | Get account balance |
+| GET `/user/value4value`  | `account:read`  | Read user's Lightning Address and keysend information|
 ```
-var scopes = map[string][]string{
-	"invoices:create":   {"/v2/invoices", "Create invoices on your behalf."},
-	"invoices:read":     {"/v2/invoices/incoming", "Read your invoice history, get realtime updates on newly paid invoices."},
-	"transactions:read": {"/v2/invoices/outgoing", "Read your outgoing transaction history and check payment status."},
-	"balance:read":      {"/v2/balance", "Read your balance."},
-}
-```
+
 ## API Gateway
 - Use the access token to make a request to the LNDhub API:
 	```
-	http https://api.regtest.getalby.com/v2/balance Authorization:"Bearer $your_access_token"
+	http https://api.regtest.getalby.com/balance Authorization:"Bearer $your_access_token"
 	```
 	The API documentation can be found at https://lndhub.regtest.getalby.com/swagger/index.html. Be aware that the Host for the OAuth API must be changed to `api.regtest.getalby.com` (LNDhub cannot be accessed directly using tokens issued by the OAuth server).
 	Currently, only the scopes/routes listed above can be accessed.
