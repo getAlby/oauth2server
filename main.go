@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v4"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
@@ -43,61 +46,72 @@ func main() {
 	manager.MapClientStorage(clientStore)
 	manager.MapTokenStorage(tokenStore)
 
+	srv := server.NewServer(server.NewConfig(), manager)
 	svc := &Service{
+		oauthServer: srv,
 		Config:      conf,
 		clientStore: clientStore,
 	}
-	err = svc.initGateways()
-	if err != nil {
-		logrus.Fatal(err)
-	}
-
-	srv := server.NewServer(server.NewConfig(), manager)
 	controller := &OAuthController{
-		oauthServer: srv,
-		service:     svc,
+		service: svc,
 	}
 	srv.SetUserAuthorizationHandler(controller.UserAuthorizeHandler)
 	srv.SetInternalErrorHandler(controller.InternalErrorHandler)
 	srv.SetAuthorizeScopeHandler(controller.AuthorizeScopeHandler)
 
-	http.HandleFunc("/oauth/authorize", controller.AuthorizationHandler)
-	http.HandleFunc("/oauth/token", controller.TokenHandler)
+	r := mux.NewRouter()
+	r.HandleFunc("/oauth/authorize", controller.AuthorizationHandler)
+	r.HandleFunc("/oauth/token", controller.TokenHandler)
 
 	//should not be publicly accesible
-	http.HandleFunc("/admin/clients", controller.ClientHandler)
+	r.HandleFunc("/admin/clients", controller.CreateClientHandler).Methods(http.MethodPost)
 
-	//gateway
-	http.HandleFunc("/", controller.ApiGateway)
-
-	//only for demo purposes, remove later
-	http.HandleFunc("/authorize", controller.DemoAuthorizeHandler)
+	//Initialize API gateway
+	gateways, err := svc.initGateways()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	for _, gw := range gateways {
+		r.Handle(gw.MatchRoute, gw)
+	}
 
 	logrus.Infof("Server starting on port %d", conf.Port)
-	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), nil))
+	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), r))
 }
 
-//hard-code origin servers for now
-func (svc *Service) initGateways() error {
-	lndhubUrl, err := url.Parse(svc.Config.LndHubUrl)
+func (svc *Service) initGateways() (result []*OriginServer, err error) {
+	targetBytes, err := ioutil.ReadFile(svc.Config.TargetFile)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	getalbyComUrl, err := url.Parse(svc.Config.GetalbyComUrl)
+	result = []*OriginServer{}
+	err = json.Unmarshal(targetBytes, &result)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	svc.gateways = map[string]*OriginServer{
-		"/ln": {
-			proxy:            httputil.NewSingleHostReverseProxy(lndhubUrl),
-			headerInjectFunc: svc.InjectLNDhubAccessToken,
-		},
-		"/api": {
-			proxy:            httputil.NewSingleHostReverseProxy(getalbyComUrl),
-			headerInjectFunc: svc.InjectGetalbycomHeader,
-		},
+	svc.scopes = map[string]bool{}
+	originHelperMap := map[string]*httputil.ReverseProxy{}
+	for _, origin := range result {
+		origin.svc = svc
+		svc.scopes[origin.Scope] = true
+		//avoid creating too much identical origin server objects
+		//by storing them in a map
+		value, found := originHelperMap[origin.Origin]
+		if found {
+			//use existing one
+			origin.proxy = value
+		} else {
+			//create new one
+			originUrl, err := url.Parse(origin.Origin)
+			if err != nil {
+				return nil, err
+			}
+			proxy := httputil.NewSingleHostReverseProxy(originUrl)
+			originHelperMap[origin.Origin] = proxy
+			origin.proxy = proxy
+		}
 	}
-	return nil
+	return result, nil
 }
 
 func initStores(db string) (clientStore *pg.ClientStore, tokenStore *pg.TokenStore, err error) {

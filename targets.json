@@ -1,0 +1,32 @@
+[
+	{
+		"matchRoute": "/balance",
+		"origin": "http://localhost:3000/v2",
+		"scope": "balance:read"
+	},
+	{
+		"matchRoute": "/invoices/incoming",
+		"origin": "http://localhost:3000/v2",
+		"scope": "invoices:read"
+	},
+	{
+		"matchRoute": "/invoices/outgoing",
+		"origin": "http://localhost:3000/v2",
+		"scope": "transactions:read"
+	},
+	{
+		"matchRoute": "/invoices",
+		"origin": "http://localhost:3000/v2",
+		"scope": "invoices:create"
+	},
+	{
+		"matchRoute": "/invoices/{payment_hash}",
+		"origin": "http://localhost:3000/v2",
+		"scope": "invoices:create"
+	},
+	{
+		"matchRoute": "/user/value4value",
+		"origin": "http://localhost:3001/api",
+		"scope": "account:read"
+	}
+]

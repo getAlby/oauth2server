@@ -15,6 +15,7 @@ require (
 
 require (
 	github.com/google/uuid v1.1.1 // indirect
+	github.com/gorilla/mux v1.8.0
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.12.1 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
