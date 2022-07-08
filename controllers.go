@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/http/httputil"
 	"strings"
-	"text/template"
 
 	"github.com/go-oauth2/oauth2/v4/errors"
 	"github.com/go-oauth2/oauth2/v4/models"
@@ -17,32 +15,24 @@ import (
 )
 
 type OAuthController struct {
-	oauthServer *server.Server
-	service     *Service
+	service *Service
 }
 
 type Service struct {
+	oauthServer *server.Server
 	Config      *Config
 	clientStore *pg.ClientStore
-	gateways    map[string]*httputil.ReverseProxy
-}
-
-var scopes = map[string][]string{
-	"account:read":      {"/api/users/value4value", "Read your LN Address and value block information."},
-	"invoices:create":   {"/ln/v2/invoices", "Create invoices on your behalf, fetch the status of a specific invoice."},
-	"invoices:read":     {"/ln/v2/invoices/incoming", "Read your invoice history, get realtime updates on newly paid invoices."},
-	"transactions:read": {"/ln/v2/invoices/outgoing", "Read your outgoing transaction history and check payment status."},
-	"balance:read":      {"/ln/v2/balance", "Read your balance."},
+	scopes      map[string]bool
 }
 
 func (ctrl *OAuthController) AuthorizationHandler(w http.ResponseWriter, r *http.Request) {
-	err := ctrl.oauthServer.HandleAuthorizeRequest(w, r)
+	err := ctrl.service.oauthServer.HandleAuthorizeRequest(w, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 }
 func (ctrl *OAuthController) TokenHandler(w http.ResponseWriter, r *http.Request) {
-	err := ctrl.oauthServer.HandleTokenRequest(w, r)
+	err := ctrl.service.oauthServer.HandleTokenRequest(w, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
@@ -159,41 +149,13 @@ func (ctrl *OAuthController) AuthorizeScopeHandler(w http.ResponseWriter, r *htt
 		return "", fmt.Errorf("Empty scope is not allowed")
 	}
 	for _, scope := range strings.Split(requestedScope, " ") {
-		if _, found := scopes[scope]; !found {
+		if _, found := ctrl.service.scopes[scope]; !found {
 			return "", fmt.Errorf("Scope not allowed: %s", scope)
 		}
 	}
 	return requestedScope, nil
 }
-func (ctrl *OAuthController) DemoAuthorizeHandler(w http.ResponseWriter, r *http.Request) {
-	clientId := r.URL.Query().Get("client_id")
-	redirectUrl := r.URL.Query().Get("redirect_url")
-	requestedScopes := r.URL.Query().Get("scope")
-	scopeList := strings.Split(requestedScopes, " ")
-	scopeDescriptions := []string{}
-	for _, sc := range scopeList {
-		scopeDescriptions = append(scopeDescriptions, scopes[sc][1])
-	}
-	tmpl := template.Must(template.ParseFiles("static/auth.html"))
 
-	data := AuthorizePageData{
-		Scopes:      scopeDescriptions,
-		ClientName:  clientId,
-		RedirectUrl: redirectUrl,
-		Scope:       requestedScopes,
-	}
-	err := tmpl.Execute(w, data)
-	if err != nil {
-		logrus.Error(err)
-	}
-}
-
-type AuthorizePageData struct {
-	Scopes      []string
-	ClientName  string
-	RedirectUrl string
-	Scope       string
-}
 type TokenResponse struct {
 	AccessToken string `json:"access_token"`
 }

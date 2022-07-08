@@ -5,7 +5,7 @@ type Config struct {
 	JWTSecret          []byte `envconfig:"JWT_SECRET" required:"true"`
 	DatabaseUri        string `envconfig:"DATABASE_URI" required:"true"`
 	LndHubUrl          string `envconfig:"LNDHUB_URL" required:"true"`
-	GetalbyComUrl      string `envconfig:"GETALBYCOM_URL" required:"true"`
 	GetalbyComUsername string `envconfig:"GETALBYCOM_USERNAME" required:"true"`
 	GetalbyComPassword string `envconfig:"GETALBYCOM_PASSWORD" required:"true"`
+	TargetFile         string `envconfig:"TARGET_FILE" default:"targets.json"`
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"strconv"
 	"strings"
 	"time"
@@ -12,10 +13,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) {
+type OriginServer struct {
+	Origin     string `json:"origin"`
+	svc        *Service
+	proxy      *httputil.ReverseProxy
+	Scope      string `json:"scope"`
+	MatchRoute string `json:"matchRoute"`
+}
+
+func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	//check authorization
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-	tokenInfo, err := ctrl.oauthServer.Manager.LoadAccessToken(r.Context(), token)
+	tokenInfo, err := origin.svc.oauthServer.Manager.LoadAccessToken(r.Context(), token)
 	if err != nil {
 		logrus.Errorf("Something went wrong loading access token: %s, token %s, request %v", err.Error(), token, r)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -26,13 +35,14 @@ func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	//check scope
-	//construct helper map
-	allowedRoutes := map[string]bool{}
+	allowed := false
 	for _, sc := range strings.Split(tokenInfo.GetScope(), " ") {
-		allowedRoutes[scopes[sc][0]] = true
+		if sc == origin.Scope {
+			allowed = true
+			break
+		}
 	}
-	//check if route is allowed
-	if _, found := allowedRoutes[r.URL.Path]; !found {
+	if !allowed {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, err = w.Write([]byte("Token does not have the right scope for operation"))
 		if err != nil {
@@ -40,20 +50,8 @@ func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
-	//extract first part of path
-	//eg. /ln/v2/balance -> /ln
-	firstPathSegment := strings.Split(r.URL.Path, "/")[1]
-	firstPathSegment = fmt.Sprintf("/%s", firstPathSegment)
-	originServer := ctrl.service.gateways[firstPathSegment]
-	if originServer == nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_, err = w.Write([]byte("Could not find resource"))
-		if err != nil {
-			logrus.Error(err)
-		}
-		return
-	}
-	err = ctrl.service.InjectJWTAccessToken(tokenInfo, r)
+
+	err = origin.svc.InjectJWTAccessToken(tokenInfo, r)
 	if err != nil {
 		logrus.Errorf("Something went wrong generating lndhub token: %s", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
@@ -63,10 +61,7 @@ func (ctrl *OAuthController) ApiGateway(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
-	//trim first path segment first, the origin server does not know about it
-	r.URL.Path = strings.TrimPrefix(r.URL.Path, firstPathSegment)
-	//route to origin server
-	originServer.ServeHTTP(w, r)
+	origin.proxy.ServeHTTP(w, r)
 }
 
 func (svc *Service) InjectJWTAccessToken(token oauth2.TokenInfo, r *http.Request) error {

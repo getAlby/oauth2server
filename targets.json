@@ -1,0 +1,32 @@
+[
+	{
+		"matchRoute": "/balance",
+		"origin": "https://lndhub.regtest.getalby.com/v2",
+		"scope": "balance:read"
+	},
+	{
+		"matchRoute": "/invoices/incoming",
+		"origin": "https://lndhub.regtest.getalby.com/v2",
+		"scope": "invoices:read"
+	},
+	{
+		"matchRoute": "/invoices/outgoing",
+		"origin": "https://lndhub.regtest.getalby.com/v2",
+		"scope": "transactions:read"
+	},
+	{
+		"matchRoute": "/invoices",
+		"origin": "https://lndhub.regtest.getalby.com/v2",
+		"scope": "invoices:create"
+	},
+	{
+		"matchRoute": "/invoices/:payment_hash",
+		"origin": "https://lndhub.regtest.getalby.com/v2",
+		"scope": "invoices:create"
+	},
+	{
+		"matchRoute": "/user/value4value",
+		"origin": "https://lndhub.regtest.getalby.com",
+		"scope": "balance:read"
+	}
+]
