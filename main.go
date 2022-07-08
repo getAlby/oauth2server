@@ -70,19 +70,19 @@ func main() {
 		logrus.Fatal(err)
 	}
 	for _, gw := range gateways {
-		http.Handle(gw.MatchRoute, &gw)
+		http.Handle(gw.MatchRoute, gw)
 	}
 
 	logrus.Infof("Server starting on port %d", conf.Port)
 	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), nil))
 }
 
-func (svc *Service) initGateways() (result []OriginServer, err error) {
+func (svc *Service) initGateways() (result []*OriginServer, err error) {
 	targetBytes, err := ioutil.ReadFile(svc.Config.TargetFile)
 	if err != nil {
 		return nil, err
 	}
-	result = []OriginServer{}
+	result = []*OriginServer{}
 	err = json.Unmarshal(targetBytes, &result)
 	if err != nil {
 		return nil, err

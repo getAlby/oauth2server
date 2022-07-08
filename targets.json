@@ -26,7 +26,7 @@
 	},
 	{
 		"matchRoute": "/user/value4value",
-		"origin": "https://lndhub.regtest.getalby.com",
-		"scope": "balance:read"
+		"origin": "https://app.regtest.getalby.com/api",
+		"scope": "account:read"
 	}
 ]
