@@ -53,7 +53,6 @@ WIP, more to follow
 | GET `/invoices/{payment_hash}`  | `invoices:create`  | Get details about a specific invoice by payment hash |
 | GET `/balance`  | `balance:read`  | Get account balance |
 | GET `/user/value4value`  | `account:read`  | Read user's Lightning Address and keysend information|
-```
 
 ## API Gateway
 - Use the access token to make a request to the LNDhub API:
