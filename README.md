@@ -59,8 +59,6 @@ WIP, more to follow
 	```
 	http https://api.regtest.getalby.com/balance Authorization:"Bearer $your_access_token"
 	```
-	The API documentation can be found at https://lndhub.regtest.getalby.com/swagger/index.html. Be aware that the Host for the OAuth API must be changed to `api.regtest.getalby.com` (LNDhub cannot be accessed directly using tokens issued by the OAuth server).
-	Currently, only the scopes/routes listed above can be accessed.
 
 To do:
 - more scopes
