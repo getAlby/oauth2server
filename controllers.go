@@ -146,7 +146,7 @@ func CheckRedirectUriDomain(baseURI, redirectURI string) error {
 		return err
 	}
 	if parsedClientUri.Host != parsedRedirect.Host || parsedClientUri.Scheme != parsedRedirect.Scheme {
-		return fmt.Errorf("Wrong redirect uri for client. redirect_uri %s, client domain %s", parsedClientUri.Host, parsedRedirect.Host)
+		return fmt.Errorf("Wrong redirect uri for client. redirect_uri %s, client domain %s", baseURI, redirectURI)
 	}
 	return nil
 }
