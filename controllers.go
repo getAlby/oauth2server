@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/go-oauth2/oauth2/v4/errors"
@@ -136,7 +137,15 @@ func (ctrl *OAuthController) AuthorizeScopeHandler(w http.ResponseWriter, r *htt
 	return requestedScope, nil
 }
 func CheckRedirectUriDomain(baseURI, redirectURI string) error {
-	if !strings.Contains(redirectURI, baseURI) {
+	clientUri, err := url.Parse(baseURI)
+	if err != nil {
+		return err
+	}
+	parsedRedirect, err := url.Parse(redirectURI)
+	if err != nil {
+		return err
+	}
+	if clientUri.Host == parsedRedirect.Host {
 		return fmt.Errorf("Wrong redirect uri for client. redirect_uri %s, client domain %s", redirectURI, baseURI)
 	}
 	return nil
