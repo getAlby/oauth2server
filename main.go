@@ -46,6 +46,8 @@ func main() {
 	manager.MapClientStorage(clientStore)
 	manager.MapTokenStorage(tokenStore)
 
+	manager.SetValidateURIHandler(CheckRedirectUriDomain)
+
 	srv := server.NewServer(server.NewConfig(), manager)
 	svc := &Service{
 		oauthServer: srv,

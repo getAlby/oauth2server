@@ -135,6 +135,12 @@ func (ctrl *OAuthController) AuthorizeScopeHandler(w http.ResponseWriter, r *htt
 	}
 	return requestedScope, nil
 }
+func CheckRedirectUriDomain(baseURI, redirectURI string) error {
+	if !strings.Contains(redirectURI, baseURI) {
+		return fmt.Errorf("Wrong redirect uri for client. redirect_uri %s, client domain %s", redirectURI, baseURI)
+	}
+	return nil
+}
 
 type TokenResponse struct {
 	AccessToken string `json:"access_token"`
