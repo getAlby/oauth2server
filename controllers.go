@@ -137,7 +137,7 @@ func (ctrl *OAuthController) AuthorizeScopeHandler(w http.ResponseWriter, r *htt
 	return requestedScope, nil
 }
 func CheckRedirectUriDomain(baseURI, redirectURI string) error {
-	clientUri, err := url.Parse(baseURI)
+	parsedClientUri, err := url.Parse(baseURI)
 	if err != nil {
 		return err
 	}
@@ -145,8 +145,8 @@ func CheckRedirectUriDomain(baseURI, redirectURI string) error {
 	if err != nil {
 		return err
 	}
-	if clientUri.Host == parsedRedirect.Host {
-		return fmt.Errorf("Wrong redirect uri for client. redirect_uri %s, client domain %s", clientUri.Host, parsedRedirect.Host)
+	if parsedClientUri.Host != parsedRedirect.Host || parsedClientUri.Scheme != parsedRedirect.Scheme {
+		return fmt.Errorf("Wrong redirect uri for client. redirect_uri %s, client domain %s", parsedClientUri.Host, parsedRedirect.Host)
 	}
 	return nil
 }
