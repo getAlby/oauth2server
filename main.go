@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
@@ -118,12 +118,12 @@ func (svc *Service) initGateways() (result []*OriginServer, err error) {
 
 func initStores(db string) (clientStore *pg.ClientStore, tokenStore *pg.TokenStore, err error) {
 	//connect database
-	pgxConn, err := pgx.Connect(context.Background(), db)
+	pgxConn, err := pgxpool.Connect(context.Background(), db)
 	if err != nil {
 		return nil, nil, err
 	}
 	// use PostgreSQL token store with pgx.Connection adapter
-	adapter := pgx4adapter.NewConn(pgxConn)
+	adapter := pgx4adapter.NewPool(pgxConn)
 	tokenStore, err = pg.NewTokenStore(adapter, pg.WithTokenStoreGCInterval(time.Minute))
 	if err != nil {
 		return nil, nil, err
