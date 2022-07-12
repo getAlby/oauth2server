@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-oauth2/oauth2/v4/errors"
 	"github.com/go-oauth2/oauth2/v4/models"
 	"github.com/go-oauth2/oauth2/v4/server"
@@ -29,16 +30,19 @@ type Service struct {
 func (ctrl *OAuthController) AuthorizationHandler(w http.ResponseWriter, r *http.Request) {
 	err := ctrl.service.oauthServer.HandleAuthorizeRequest(w, r)
 	if err != nil {
+		sentry.CaptureException(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 }
 func (ctrl *OAuthController) TokenHandler(w http.ResponseWriter, r *http.Request) {
 	err := ctrl.service.oauthServer.HandleTokenRequest(w, r)
 	if err != nil {
+		sentry.CaptureException(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 func (ctrl *OAuthController) InternalErrorHandler(err error) (re *errors.Response) {
+	sentry.CaptureException(err)
 	return &errors.Response{
 		Error:       err,
 		ErrorCode:   0,
@@ -51,6 +55,7 @@ func (ctrl *OAuthController) InternalErrorHandler(err error) (re *errors.Respons
 func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http.Request) (userID string, err error) {
 	token, err := ctrl.authenticateUser(r)
 	if err != nil {
+		sentry.CaptureException(err)
 		return "", err
 	}
 
@@ -131,7 +136,9 @@ func (ctrl *OAuthController) AuthorizeScopeHandler(w http.ResponseWriter, r *htt
 	}
 	for _, scope := range strings.Split(requestedScope, " ") {
 		if _, found := ctrl.service.scopes[scope]; !found {
-			return "", fmt.Errorf("Scope not allowed: %s", scope)
+			err = fmt.Errorf("Scope not allowed: %s", scope)
+			sentry.CaptureException(err)
+			return "", err
 		}
 	}
 	return requestedScope, nil
@@ -146,7 +153,9 @@ func CheckRedirectUriDomain(baseURI, redirectURI string) error {
 		return err
 	}
 	if parsedClientUri.Host != parsedRedirect.Host || parsedClientUri.Scheme != parsedRedirect.Scheme {
-		return fmt.Errorf("Wrong redirect uri for client. redirect_uri %s, client domain %s", baseURI, redirectURI)
+		err = fmt.Errorf("Wrong redirect uri for client. redirect_uri %s, client domain %s", baseURI, redirectURI)
+		sentry.CaptureException(err)
+		return err
 	}
 	return nil
 }

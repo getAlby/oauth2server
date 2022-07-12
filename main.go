@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -16,8 +17,11 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
 
+	"github.com/getsentry/sentry-go"
+	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-oauth2/oauth2/v4/manage"
 	"github.com/go-oauth2/oauth2/v4/server"
+	"github.com/gorilla/handlers"
 	pg "github.com/vgarvardt/go-oauth2-pg/v4"
 	"github.com/vgarvardt/go-pg-adapter/pgx4adapter"
 )
@@ -35,6 +39,17 @@ func main() {
 		logrus.Fatalf("Error loading environment variables: %v", err)
 	}
 	logrus.SetReportCaller(true)
+
+	// Setup exception tracking with Sentry if configured
+	if conf.SentryDSN != "" {
+		if err = sentry.Init(sentry.ClientOptions{
+			Dsn:          conf.SentryDSN,
+			IgnoreErrors: []string{"401"},
+		}); err != nil {
+			logrus.Errorf("sentry init error: %v", err)
+		}
+		defer sentry.Flush(2 * time.Second)
+	}
 
 	manager := manage.NewDefaultManager()
 	manager.SetAuthorizeCodeTokenCfg(manage.DefaultAuthorizeCodeTokenCfg)
@@ -78,7 +93,15 @@ func main() {
 	}
 
 	logrus.Infof("Server starting on port %d", conf.Port)
-	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), r))
+	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), registerMiddleware(r)))
+}
+
+//panic recover, logging, Sentry middlewares
+func registerMiddleware(in http.Handler) http.Handler {
+	recoveryHandler := handlers.RecoveryHandler()(in)
+	loggingHandler := handlers.CombinedLoggingHandler(os.Stdout, recoveryHandler)
+	result := sentryhttp.New(sentryhttp.Options{}).Handle(loggingHandler)
+	return result
 }
 
 func (svc *Service) initGateways() (result []*OriginServer, err error) {
