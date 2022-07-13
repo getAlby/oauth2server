@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-oauth2/oauth2/v4"
 	"github.com/golang-jwt/jwt"
 	"github.com/sirupsen/logrus"
@@ -27,6 +28,7 @@ func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	tokenInfo, err := origin.svc.oauthServer.Manager.LoadAccessToken(r.Context(), token)
 	if err != nil {
 		logrus.Errorf("Something went wrong loading access token: %s, token %s, request %v", err.Error(), token, r)
+		sentry.CaptureException(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, err = w.Write([]byte("Something went wrong while authenticating user."))
 		if err != nil {
@@ -54,6 +56,7 @@ func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	err = origin.svc.InjectJWTAccessToken(tokenInfo, r)
 	if err != nil {
 		logrus.Errorf("Something went wrong generating lndhub token: %s", err.Error())
+		sentry.CaptureException(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, err = w.Write([]byte("Something went wrong while authenticating user."))
 		if err != nil {
