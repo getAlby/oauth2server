@@ -79,6 +79,7 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/oauth/authorize", controller.AuthorizationHandler)
 	r.HandleFunc("/oauth/token", controller.TokenHandler)
+	r.HandleFunc("/oauth/scopes", controller.ScopeHandler)
 
 	//should not be publicly accesible
 	r.HandleFunc("/admin/clients", controller.CreateClientHandler).Methods(http.MethodPost)
@@ -114,11 +115,11 @@ func (svc *Service) initGateways() (result []*OriginServer, err error) {
 	if err != nil {
 		return nil, err
 	}
-	svc.scopes = map[string]bool{}
+	svc.scopes = map[string]string{}
 	originHelperMap := map[string]*httputil.ReverseProxy{}
 	for _, origin := range result {
 		origin.svc = svc
-		svc.scopes[origin.Scope] = true
+		svc.scopes[origin.Scope] = origin.Description
 		//avoid creating too much identical origin server objects
 		//by storing them in a map
 		value, found := originHelperMap[origin.Origin]

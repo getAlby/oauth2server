@@ -24,7 +24,7 @@ type Service struct {
 	oauthServer *server.Server
 	Config      *Config
 	clientStore *pg.ClientStore
-	scopes      map[string]bool
+	scopes      map[string]string
 }
 
 func (ctrl *OAuthController) AuthorizationHandler(w http.ResponseWriter, r *http.Request) {
@@ -34,6 +34,15 @@ func (ctrl *OAuthController) AuthorizationHandler(w http.ResponseWriter, r *http
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 }
+
+func (ctrl *OAuthController) ScopeHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-type", "application/json")
+	err := json.NewEncoder(w).Encode(ctrl.service.scopes)
+	if err != nil {
+		logrus.Error(err)
+	}
+}
+
 func (ctrl *OAuthController) TokenHandler(w http.ResponseWriter, r *http.Request) {
 	err := ctrl.service.oauthServer.HandleTokenRequest(w, r)
 	if err != nil {
