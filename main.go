@@ -83,6 +83,13 @@ func main() {
 	//should not be publicly accesible
 	r.HandleFunc("/admin/clients", controller.CreateClientHandler).Methods(http.MethodPost)
 
+	//manages connected apps for users
+	subRouter := r.Methods(http.MethodGet, http.MethodPost, http.MethodDelete).Subrouter()
+	subRouter.HandleFunc("/clients", controller.ListClientHandler).Methods(http.MethodGet)
+	subRouter.HandleFunc("/clients", controller.UpdateClientHandler).Methods(http.MethodPost)
+	subRouter.HandleFunc("/clients", controller.DeleteClientHandler).Methods(http.MethodDelete)
+	subRouter.Use(controller.UserAuthorizeMiddleware)
+
 	//Initialize API gateway
 	gateways, err := svc.initGateways()
 	if err != nil {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,6 +16,10 @@ import (
 	"github.com/sirupsen/logrus"
 	pg "github.com/vgarvardt/go-oauth2-pg/v4"
 )
+
+type ctx_id_type string
+
+var CONTEXT_ID_KEY ctx_id_type = "ID"
 
 type OAuthController struct {
 	service *Service
@@ -70,6 +75,31 @@ func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http
 		return "", fmt.Errorf("Cannot authenticate user, token does not contain user id")
 	}
 	return fmt.Sprintf("%.0f", claims["id"].(float64)), nil
+}
+
+func (ctrl *OAuthController) ListClientHandler(w http.ResponseWriter, r *http.Request) {
+	userId := r.Context().Value(CONTEXT_ID_KEY)
+	fmt.Println(userId)
+}
+
+func (ctrl *OAuthController) UpdateClientHandler(w http.ResponseWriter, r *http.Request) {
+}
+
+func (ctrl *OAuthController) DeleteClientHandler(w http.ResponseWriter, r *http.Request) {
+}
+
+func (ctrl *OAuthController) UserAuthorizeMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := ctrl.UserAuthorizeHandler(w, r)
+		if err != nil {
+			logrus.Errorf("Error authenticating user %s", err.Error())
+			sentry.CaptureException(err)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		r = r.WithContext(context.WithValue(r.Context(), CONTEXT_ID_KEY, id))
+		h.ServeHTTP(w, r)
+	})
 }
 
 func (ctrl *OAuthController) authenticateUser(r *http.Request) (token string, err error) {
