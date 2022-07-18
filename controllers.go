@@ -8,12 +8,14 @@ import (
 	"strings"
 
 	"github.com/getsentry/sentry-go"
+	oauthErrors "github.com/go-oauth2/oauth2/errors"
 	"github.com/go-oauth2/oauth2/v4/errors"
 	"github.com/go-oauth2/oauth2/v4/models"
 	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/golang-jwt/jwt"
 	"github.com/sirupsen/logrus"
 	pg "github.com/vgarvardt/go-oauth2-pg/v4"
+	pgadapter "github.com/vgarvardt/go-pg-adapter"
 )
 
 type OAuthController struct {
@@ -47,11 +49,25 @@ func (ctrl *OAuthController) TokenHandler(w http.ResponseWriter, r *http.Request
 	err := ctrl.service.oauthServer.HandleTokenRequest(w, r)
 	if err != nil {
 		sentry.CaptureException(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 func (ctrl *OAuthController) InternalErrorHandler(err error) (re *errors.Response) {
+	//workaround to not show "sql: no rows in result set" to user
+	oauthErrors.Descriptions[pgadapter.ErrNoRows] = oauthErrors.Descriptions[oauthErrors.ErrInvalidGrant]
+	oauthErrors.StatusCodes[pgadapter.ErrNoRows] = oauthErrors.StatusCodes[oauthErrors.ErrInvalidGrant]
 	sentry.CaptureException(err)
+	description := oauthErrors.Descriptions[err]
+	statusCode := oauthErrors.StatusCodes[err]
+	if description != "" && statusCode != 0 {
+		return &errors.Response{
+			Error:       fmt.Errorf(description),
+			ErrorCode:   statusCode,
+			Description: description,
+			URI:         "",
+			StatusCode:  statusCode,
+			Header:      map[string][]string{},
+		}
+	}
 	return &errors.Response{
 		Error:       err,
 		ErrorCode:   0,

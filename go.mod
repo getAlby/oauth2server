@@ -17,6 +17,7 @@ require github.com/felixge/httpsnoop v1.0.1 // indirect
 
 require (
 	github.com/getsentry/sentry-go v0.13.0
+	github.com/go-oauth2/oauth2 v3.9.2+incompatible
 	github.com/google/uuid v1.1.1 // indirect
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
