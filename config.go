@@ -7,6 +7,6 @@ type Config struct {
 	LndHubUrl              string `envconfig:"LNDHUB_URL" required:"true"`
 	TargetFile             string `envconfig:"TARGET_FILE" default:"targets.json"`
 	SentryDSN              string `envconfig:"SENTRY_DSN"`
-	AccessTokenExpSeconds  int    `default:"7200"`    //default 2 hours
-	RefreshTokenExpSeconds int    `default:"2592000"` //default 30 days
+	AccessTokenExpSeconds  int    `envconfig:"ACCESS_EXPIRY_SECONDS" default:"7200"`     //default 2 hours
+	RefreshTokenExpSeconds int    `envconfig:"REFRESH_EXPIRY_SECONDS" default:"2592000"` //default 30 days
 }
