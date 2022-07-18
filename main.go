@@ -63,6 +63,12 @@ func main() {
 
 	manager.SetValidateURIHandler(CheckRedirectUriDomain)
 
+	manager.SetAuthorizeCodeTokenCfg(&manage.Config{
+		AccessTokenExp:    time.Duration(conf.AccessTokenExpSeconds) * time.Second,
+		RefreshTokenExp:   time.Duration(conf.RefreshTokenExpSeconds) * time.Second,
+		IsGenerateRefresh: true,
+	})
+
 	srv := server.NewServer(server.NewConfig(), manager)
 	svc := &Service{
 		oauthServer: srv,
