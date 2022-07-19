@@ -63,10 +63,7 @@ func main() {
 	if err != nil {
 		logrus.Fatalf("Error connecting db: %s", err.Error())
 	}
-	err = MigrateTokenData(db)
-	if err != nil {
-		logrus.Fatalf("Error migrating db: %s", err.Error())
-	}
+
 	manager.MapClientStorage(clientStore)
 	manager.MapTokenStorage(tokenStore)
 
