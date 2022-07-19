@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 
+	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
 	"github.com/getsentry/sentry-go"
 	oauthErrors "github.com/go-oauth2/oauth2/errors"
 	"github.com/go-oauth2/oauth2/v4/errors"
@@ -14,8 +15,7 @@ import (
 	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/golang-jwt/jwt"
 	"github.com/sirupsen/logrus"
-	pg "github.com/vgarvardt/go-oauth2-pg/v4"
-	pgadapter "github.com/vgarvardt/go-pg-adapter"
+	"gorm.io/gorm"
 )
 
 type OAuthController struct {
@@ -25,7 +25,8 @@ type OAuthController struct {
 type Service struct {
 	oauthServer *server.Server
 	Config      *Config
-	clientStore *pg.ClientStore
+	clientStore *oauth2gorm.ClientStore
+	db          *gorm.DB
 	scopes      map[string]string
 }
 
@@ -53,8 +54,6 @@ func (ctrl *OAuthController) TokenHandler(w http.ResponseWriter, r *http.Request
 }
 func (ctrl *OAuthController) InternalErrorHandler(err error) (re *errors.Response) {
 	//workaround to not show "sql: no rows in result set" to user
-	oauthErrors.Descriptions[pgadapter.ErrNoRows] = oauthErrors.Descriptions[oauthErrors.ErrInvalidGrant]
-	oauthErrors.StatusCodes[pgadapter.ErrNoRows] = oauthErrors.StatusCodes[oauthErrors.ErrInvalidGrant]
 	sentry.CaptureException(err)
 	description := oauthErrors.Descriptions[err]
 	statusCode := oauthErrors.StatusCodes[err]
@@ -137,7 +136,7 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err = ctrl.service.clientStore.Create(clientInfo)
+	err = ctrl.service.clientStore.Create(r.Context(), clientInfo)
 	if err != nil {
 		logrus.Errorf("Error storing client info %s", err.Error())
 		_, err = w.Write([]byte("Something went wrong while storing client info"))
