@@ -64,6 +64,12 @@ func main() {
 		logrus.Fatalf("Error connecting db: %s", err.Error())
 	}
 
+	//initialize extra db tables
+	err = db.AutoMigrate(&ClientMetaData{})
+	if err != nil {
+		logrus.Fatalf("Error connecting db: %s", err.Error())
+	}
+
 	manager.MapClientStorage(clientStore)
 	manager.MapTokenStorage(tokenStore)
 
