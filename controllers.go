@@ -15,6 +15,7 @@ import (
 	"github.com/go-oauth2/oauth2/v4/models"
 	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/golang-jwt/jwt"
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
@@ -103,13 +104,45 @@ func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http
 
 func (ctrl *OAuthController) ListClientHandler(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value(CONTEXT_ID_KEY)
-	fmt.Println(userId)
+	result := []oauth2gorm.TokenStoreItem{}
+	err := ctrl.service.db.Table(tokenTableName).Find(&result, &oauth2gorm.TokenStoreItem{
+		UserID: userId.(string),
+	}).Error
+	if err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	response := []ListClientsResponse{}
+	for _, ti := range result {
+		//todo: fetch client data when implemented
+		parsed, _ := url.Parse(ti.RedirectURI)
+		response = append(response, ListClientsResponse{
+			Domain: parsed.Host,
+			ID:     ti.ClientID,
+			Scopes: strings.Split(ti.Scope, " "),
+		})
+	}
+	w.Header().Add("Content-type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		logrus.Error(err)
+	}
 }
 
+//should be used for budgets later
 func (ctrl *OAuthController) UpdateClientHandler(w http.ResponseWriter, r *http.Request) {
 }
 
+//deletes all tokens a user currently has for a given client
 func (ctrl *OAuthController) DeleteClientHandler(w http.ResponseWriter, r *http.Request) {
+	clientId := mux.Vars(r)["clientId"]
+	err := ctrl.service.db.Table(tokenTableName).Delete(&oauth2gorm.TokenStoreItem{}, &oauth2gorm.TokenStoreItem{ClientID: clientId}).Error
+	if err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (ctrl *OAuthController) UserAuthorizeMiddleware(h http.Handler) http.Handler {
@@ -127,13 +160,19 @@ func (ctrl *OAuthController) UserAuthorizeMiddleware(h http.Handler) http.Handle
 }
 
 func (ctrl *OAuthController) authenticateUser(r *http.Request) (token string, err error) {
-	//look for login/password in form data
 	err = r.ParseForm()
+	//look for login/password in form data
+	//but also allow basic auth, form data only works with POST requests
+	login, password, ok := r.BasicAuth()
+	if ok {
+		r.Form.Add("login", login)
+		r.Form.Add("password", password)
+	}
 	if err != nil {
 		return "", fmt.Errorf("Error parsing form data %s", err.Error())
 	}
-	login := r.Form.Get("login")
-	password := r.Form.Get("password")
+	login = r.Form.Get("login")
+	password = r.Form.Get("password")
 
 	if login == "" || password == "" {
 		return "", fmt.Errorf("Cannot authenticate user, login or password missing.")
