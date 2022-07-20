@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,18 +11,24 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 
+	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
 	"github.com/getsentry/sentry-go"
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-oauth2/oauth2/v4/manage"
 	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/gorilla/handlers"
-	pg "github.com/vgarvardt/go-oauth2-pg/v4"
-	"github.com/vgarvardt/go-pg-adapter/pgx4adapter"
+)
+
+const (
+	gcIntervalSeconds = 60
+	clientTableName   = "oauth2_clients"
+	tokenTableName    = "oauth2_tokens"
 )
 
 func main() {
@@ -54,17 +59,25 @@ func main() {
 	manager := manage.NewDefaultManager()
 	manager.SetAuthorizeCodeTokenCfg(manage.DefaultAuthorizeCodeTokenCfg)
 
-	clientStore, tokenStore, err := initStores(conf.DatabaseUri)
+	clientStore, tokenStore, db, err := initStores(conf.DatabaseUri)
 	if err != nil {
 		logrus.Fatalf("Error connecting db: %s", err.Error())
 	}
+
 	manager.MapClientStorage(clientStore)
 	manager.MapTokenStorage(tokenStore)
 
 	manager.SetValidateURIHandler(CheckRedirectUriDomain)
 
+	manager.SetAuthorizeCodeTokenCfg(&manage.Config{
+		AccessTokenExp:    time.Duration(conf.AccessTokenExpSeconds) * time.Second,
+		RefreshTokenExp:   time.Duration(conf.RefreshTokenExpSeconds) * time.Second,
+		IsGenerateRefresh: true,
+	})
+
 	srv := server.NewServer(server.NewConfig(), manager)
 	svc := &Service{
+		db:          db,
 		oauthServer: srv,
 		Config:      conf,
 		clientStore: clientStore,
@@ -79,6 +92,7 @@ func main() {
 	r := mux.NewRouter()
 	r.HandleFunc("/oauth/authorize", controller.AuthorizationHandler)
 	r.HandleFunc("/oauth/token", controller.TokenHandler)
+	r.HandleFunc("/oauth/scopes", controller.ScopeHandler)
 
 	//should not be publicly accesible
 	r.HandleFunc("/admin/clients", controller.CreateClientHandler).Methods(http.MethodPost)
@@ -121,11 +135,11 @@ func (svc *Service) initGateways() (result []*OriginServer, err error) {
 	if err != nil {
 		return nil, err
 	}
-	svc.scopes = map[string]bool{}
+	svc.scopes = map[string]string{}
 	originHelperMap := map[string]*httputil.ReverseProxy{}
 	for _, origin := range result {
 		origin.svc = svc
-		svc.scopes[origin.Scope] = true
+		svc.scopes[origin.Scope] = origin.Description
 		//avoid creating too much identical origin server objects
 		//by storing them in a map
 		value, found := originHelperMap[origin.Origin]
@@ -146,24 +160,24 @@ func (svc *Service) initGateways() (result []*OriginServer, err error) {
 	return result, nil
 }
 
-func initStores(db string) (clientStore *pg.ClientStore, tokenStore *pg.TokenStore, err error) {
+func initStores(dsn string) (clientStore *oauth2gorm.ClientStore, tokenStore *oauth2gorm.TokenStore, db *gorm.DB, err error) {
 	//connect database
-	pgxConn, err := pgxpool.Connect(context.Background(), db)
+	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	// use PostgreSQL token store with pgx.Connection adapter
-	adapter := pgx4adapter.NewPool(pgxConn)
-	tokenStore, err = pg.NewTokenStore(adapter, pg.WithTokenStoreGCInterval(time.Minute))
+	//migrated from legacy tables
+	err = db.Table(clientTableName).AutoMigrate(&oauth2gorm.ClientStoreItem{})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	defer tokenStore.Close()
+	err = db.Table(tokenTableName).AutoMigrate(&oauth2gorm.TokenStoreItem{})
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	tokenStore = oauth2gorm.NewTokenStoreWithDB(&oauth2gorm.Config{TableName: tokenTableName}, db, gcIntervalSeconds)
+	clientStore = oauth2gorm.NewClientStoreWithDB(&oauth2gorm.Config{TableName: clientTableName}, db)
 
-	clientStore, err = pg.NewClientStore(adapter)
-	if err != nil {
-		return nil, nil, err
-	}
 	logrus.Info("Succesfully connected to postgres database")
 	return
 }

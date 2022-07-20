@@ -8,13 +8,15 @@ import (
 	"net/url"
 	"strings"
 
+	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
 	"github.com/getsentry/sentry-go"
+	oauthErrors "github.com/go-oauth2/oauth2/errors"
 	"github.com/go-oauth2/oauth2/v4/errors"
 	"github.com/go-oauth2/oauth2/v4/models"
 	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/golang-jwt/jwt"
 	"github.com/sirupsen/logrus"
-	pg "github.com/vgarvardt/go-oauth2-pg/v4"
+	"gorm.io/gorm"
 )
 
 type ctx_id_type string
@@ -28,8 +30,9 @@ type OAuthController struct {
 type Service struct {
 	oauthServer *server.Server
 	Config      *Config
-	clientStore *pg.ClientStore
-	scopes      map[string]bool
+	clientStore *oauth2gorm.ClientStore
+	db          *gorm.DB
+	scopes      map[string]string
 }
 
 func (ctrl *OAuthController) AuthorizationHandler(w http.ResponseWriter, r *http.Request) {
@@ -39,15 +42,36 @@ func (ctrl *OAuthController) AuthorizationHandler(w http.ResponseWriter, r *http
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 }
+
+func (ctrl *OAuthController) ScopeHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-type", "application/json")
+	err := json.NewEncoder(w).Encode(ctrl.service.scopes)
+	if err != nil {
+		logrus.Error(err)
+	}
+}
+
 func (ctrl *OAuthController) TokenHandler(w http.ResponseWriter, r *http.Request) {
 	err := ctrl.service.oauthServer.HandleTokenRequest(w, r)
 	if err != nil {
 		sentry.CaptureException(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 func (ctrl *OAuthController) InternalErrorHandler(err error) (re *errors.Response) {
+	//workaround to not show "sql: no rows in result set" to user
 	sentry.CaptureException(err)
+	description := oauthErrors.Descriptions[err]
+	statusCode := oauthErrors.StatusCodes[err]
+	if description != "" && statusCode != 0 {
+		return &errors.Response{
+			Error:       fmt.Errorf(description),
+			ErrorCode:   statusCode,
+			Description: description,
+			URI:         "",
+			StatusCode:  statusCode,
+			Header:      map[string][]string{},
+		}
+	}
 	return &errors.Response{
 		Error:       err,
 		ErrorCode:   0,
@@ -142,7 +166,7 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err = ctrl.service.clientStore.Create(clientInfo)
+	err = ctrl.service.clientStore.Create(r.Context(), clientInfo)
 	if err != nil {
 		logrus.Errorf("Error storing client info %s", err.Error())
 		_, err = w.Write([]byte("Something went wrong while storing client info"))

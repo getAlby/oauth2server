@@ -15,11 +15,12 @@ import (
 )
 
 type OriginServer struct {
-	Origin     string `json:"origin"`
-	svc        *Service
-	proxy      *httputil.ReverseProxy
-	Scope      string `json:"scope"`
-	MatchRoute string `json:"matchRoute"`
+	Origin      string `json:"origin"`
+	svc         *Service
+	proxy       *httputil.ReverseProxy
+	Scope       string `json:"scope"`
+	MatchRoute  string `json:"matchRoute"`
+	Description string `json:"description"`
 }
 
 func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
