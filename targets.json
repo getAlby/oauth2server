@@ -46,5 +46,11 @@
 		"origin": "http://alby-simnet-getalbycom/api",
 		"description": "Read your payment details like the Lightning Address and keysend information.",
 		"scope": "account:read"
+	},
+	{
+		"matchRoute": "/user/summary",
+		"origin": "http://alby-simnet-getalbycom/api",
+		"description": "Read your account summary",
+		"scope": "balance:read"
 	}
 ]
