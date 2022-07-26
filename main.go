@@ -25,12 +25,6 @@ import (
 	"github.com/gorilla/handlers"
 )
 
-const (
-	gcIntervalSeconds = 60
-	clientTableName   = "oauth2_clients"
-	tokenTableName    = "oauth2_tokens"
-)
-
 func main() {
 	// Load env file as env variables
 	err := godotenv.Load(".env")

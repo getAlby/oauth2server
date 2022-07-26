@@ -1,4 +1,4 @@
-package main
+package controllers
 
 import (
 	"context"
@@ -6,13 +6,19 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"oauth2server/constants"
+	"oauth2server/models"
+	"strconv"
 	"strings"
+	"time"
+
+	"github.com/go-oauth2/oauth2/v4"
+	mdls "github.com/go-oauth2/oauth2/v4/models"
 
 	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
 	"github.com/getsentry/sentry-go"
 	oauthErrors "github.com/go-oauth2/oauth2/errors"
 	"github.com/go-oauth2/oauth2/v4/errors"
-	"github.com/go-oauth2/oauth2/v4/models"
 	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
@@ -35,15 +41,52 @@ type OAuthController struct {
 }
 
 type Service struct {
-	oauthServer *server.Server
+	OauthServer *server.Server
 	Config      *Config
 	clientStore *oauth2gorm.ClientStore
 	db          *gorm.DB
 	scopes      map[string]string
 }
 
+func (svc *Service) InjectJWTAccessToken(token oauth2.TokenInfo, r *http.Request) error {
+	//mint and inject jwt token needed for origin server
+	//the request is dispatched immediately, so the tokens can have a short expiry
+	expirySeconds := 60
+	lndhubId := token.GetUserID()
+	lndhubToken, err := GenerateLNDHubAccessToken(svc.Config.JWTSecret, expirySeconds, lndhubId)
+	if err != nil {
+		return err
+	}
+	//inject lndhub token in request
+	r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", lndhubToken))
+	return nil
+}
+
+// GenerateAccessToken : Generate Access Token
+func GenerateLNDHubAccessToken(secret []byte, expiryInSeconds int, userId string) (string, error) {
+	//convert string to int
+	id, err := strconv.Atoi(userId)
+	if err != nil {
+		return "", err
+	}
+	claims := &models.LNDhubClaims{
+		ID: int64(id),
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(time.Second * time.Duration(expiryInSeconds)).Unix(),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	t, err := token.SignedString(secret)
+	if err != nil {
+		return "", err
+	}
+
+	return t, nil
+}
 func (ctrl *OAuthController) AuthorizationHandler(w http.ResponseWriter, r *http.Request) {
-	err := ctrl.service.oauthServer.HandleAuthorizeRequest(w, r)
+	err := ctrl.service.OauthServer.HandleAuthorizeRequest(w, r)
 	if err != nil {
 		sentry.CaptureException(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -59,7 +102,7 @@ func (ctrl *OAuthController) ScopeHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (ctrl *OAuthController) TokenHandler(w http.ResponseWriter, r *http.Request) {
-	err := ctrl.service.oauthServer.HandleTokenRequest(w, r)
+	err := ctrl.service.OauthServer.HandleTokenRequest(w, r)
 	if err != nil {
 		sentry.CaptureException(err)
 	}
@@ -111,7 +154,7 @@ func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http
 func (ctrl *OAuthController) ListClientHandler(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value(CONTEXT_ID_KEY)
 	result := []oauth2gorm.TokenStoreItem{}
-	err := ctrl.service.db.Table(tokenTableName).Find(&result, &oauth2gorm.TokenStoreItem{
+	err := ctrl.service.db.Table(constants.TokenTableName).Find(&result, &oauth2gorm.TokenStoreItem{
 		UserID: userId.(string),
 	}).Error
 	if err != nil {
@@ -119,12 +162,12 @@ func (ctrl *OAuthController) ListClientHandler(w http.ResponseWriter, r *http.Re
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	response := []ListClientsResponse{}
+	response := []models.ListClientsResponse{}
 	for _, ti := range result {
 		//todo: more efficient queries ?
 		//store information in a single relation when a token is created?
-		clientMetadata := &ClientMetaData{}
-		err = ctrl.service.db.First(&clientMetadata, &ClientMetaData{ClientID: ti.ClientID}).Error
+		clientMetadata := &models.ClientMetaData{}
+		err = ctrl.service.db.First(&clientMetadata, &models.ClientMetaData{ClientID: ti.ClientID}).Error
 		if err != nil {
 			sentry.CaptureException(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -135,7 +178,7 @@ func (ctrl *OAuthController) ListClientHandler(w http.ResponseWriter, r *http.Re
 		for _, sc := range strings.Split(ti.Scope, " ") {
 			scopes[sc] = ctrl.service.scopes[sc]
 		}
-		response = append(response, ListClientsResponse{
+		response = append(response, models.ListClientsResponse{
 			Domain:   parsed.Host,
 			ID:       ti.ClientID,
 			Name:     clientMetadata.Name,
@@ -158,7 +201,7 @@ func (ctrl *OAuthController) UpdateClientHandler(w http.ResponseWriter, r *http.
 //deletes all tokens a user currently has for a given client
 func (ctrl *OAuthController) DeleteClientHandler(w http.ResponseWriter, r *http.Request) {
 	clientId := mux.Vars(r)["clientId"]
-	err := ctrl.service.db.Table(tokenTableName).Delete(&oauth2gorm.TokenStoreItem{}, &oauth2gorm.TokenStoreItem{ClientID: clientId}).Error
+	err := ctrl.service.db.Table(constants.TokenTableName).Delete(&oauth2gorm.TokenStoreItem{}, &oauth2gorm.TokenStoreItem{ClientID: clientId}).Error
 	if err != nil {
 		sentry.CaptureException(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -215,7 +258,7 @@ func (ctrl *OAuthController) authenticateUser(r *http.Request) (token string, er
 	return tokenResponse.AccessToken, nil
 }
 func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.Request) {
-	req := &CreateClientRequest{}
+	req := &models.CreateClientRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		logrus.Errorf("Error decoding client info request %s", err.Error())
@@ -230,7 +273,7 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 	id := random.New().String(clientIdLength)
 	secret := random.New().String(clientSecretLength)
 
-	err = ctrl.service.clientStore.Create(r.Context(), &models.Client{
+	err = ctrl.service.clientStore.Create(r.Context(), &mdls.Client{
 		ID:     id,
 		Secret: secret,
 		Domain: req.Domain,
@@ -244,7 +287,7 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	err = ctrl.service.db.Create(&ClientMetaData{
+	err = ctrl.service.db.Create(&models.ClientMetaData{
 		ClientID: id,
 		Name:     req.Name,
 		ImageUrl: req.ImageUrl,
@@ -260,7 +303,7 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 		return
 	}
 	w.Header().Add("Content-type", "application/json")
-	err = json.NewEncoder(w).Encode(&CreateClientResponse{
+	err = json.NewEncoder(w).Encode(&models.CreateClientResponse{
 		Name:         req.Name,
 		ImageUrl:     req.ImageUrl,
 		ClientId:     id,
