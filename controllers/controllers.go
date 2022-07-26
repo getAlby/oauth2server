@@ -8,23 +8,19 @@ import (
 	"net/url"
 	"oauth2server/constants"
 	"oauth2server/models"
-	"strconv"
+	"oauth2server/service"
 	"strings"
-	"time"
 
-	"github.com/go-oauth2/oauth2/v4"
 	mdls "github.com/go-oauth2/oauth2/v4/models"
 
 	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
 	"github.com/getsentry/sentry-go"
 	oauthErrors "github.com/go-oauth2/oauth2/errors"
 	"github.com/go-oauth2/oauth2/v4/errors"
-	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
 	"github.com/labstack/gommon/random"
 	"github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 )
 
 type ctx_id_type string
@@ -37,56 +33,11 @@ const (
 )
 
 type OAuthController struct {
-	service *Service
+	Service *service.Service
 }
 
-type Service struct {
-	OauthServer *server.Server
-	Config      *Config
-	clientStore *oauth2gorm.ClientStore
-	db          *gorm.DB
-	scopes      map[string]string
-}
-
-func (svc *Service) InjectJWTAccessToken(token oauth2.TokenInfo, r *http.Request) error {
-	//mint and inject jwt token needed for origin server
-	//the request is dispatched immediately, so the tokens can have a short expiry
-	expirySeconds := 60
-	lndhubId := token.GetUserID()
-	lndhubToken, err := GenerateLNDHubAccessToken(svc.Config.JWTSecret, expirySeconds, lndhubId)
-	if err != nil {
-		return err
-	}
-	//inject lndhub token in request
-	r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", lndhubToken))
-	return nil
-}
-
-// GenerateAccessToken : Generate Access Token
-func GenerateLNDHubAccessToken(secret []byte, expiryInSeconds int, userId string) (string, error) {
-	//convert string to int
-	id, err := strconv.Atoi(userId)
-	if err != nil {
-		return "", err
-	}
-	claims := &models.LNDhubClaims{
-		ID: int64(id),
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Second * time.Duration(expiryInSeconds)).Unix(),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	t, err := token.SignedString(secret)
-	if err != nil {
-		return "", err
-	}
-
-	return t, nil
-}
 func (ctrl *OAuthController) AuthorizationHandler(w http.ResponseWriter, r *http.Request) {
-	err := ctrl.service.OauthServer.HandleAuthorizeRequest(w, r)
+	err := ctrl.Service.OauthServer.HandleAuthorizeRequest(w, r)
 	if err != nil {
 		sentry.CaptureException(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -95,14 +46,14 @@ func (ctrl *OAuthController) AuthorizationHandler(w http.ResponseWriter, r *http
 
 func (ctrl *OAuthController) ScopeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-type", "application/json")
-	err := json.NewEncoder(w).Encode(ctrl.service.scopes)
+	err := json.NewEncoder(w).Encode(ctrl.Service.Scopes)
 	if err != nil {
 		logrus.Error(err)
 	}
 }
 
 func (ctrl *OAuthController) TokenHandler(w http.ResponseWriter, r *http.Request) {
-	err := ctrl.service.OauthServer.HandleTokenRequest(w, r)
+	err := ctrl.Service.OauthServer.HandleTokenRequest(w, r)
 	if err != nil {
 		sentry.CaptureException(err)
 	}
@@ -140,7 +91,7 @@ func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http
 
 	claims := jwt.MapClaims{}
 	_, err = jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
-		return ctrl.service.Config.JWTSecret, nil
+		return ctrl.Service.Config.JWTSecret, nil
 	})
 	if err != nil {
 		return "", err
@@ -154,7 +105,7 @@ func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http
 func (ctrl *OAuthController) ListClientHandler(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value(CONTEXT_ID_KEY)
 	result := []oauth2gorm.TokenStoreItem{}
-	err := ctrl.service.db.Table(constants.TokenTableName).Find(&result, &oauth2gorm.TokenStoreItem{
+	err := ctrl.Service.DB.Table(constants.TokenTableName).Find(&result, &oauth2gorm.TokenStoreItem{
 		UserID: userId.(string),
 	}).Error
 	if err != nil {
@@ -167,7 +118,7 @@ func (ctrl *OAuthController) ListClientHandler(w http.ResponseWriter, r *http.Re
 		//todo: more efficient queries ?
 		//store information in a single relation when a token is created?
 		clientMetadata := &models.ClientMetaData{}
-		err = ctrl.service.db.First(&clientMetadata, &models.ClientMetaData{ClientID: ti.ClientID}).Error
+		err = ctrl.Service.DB.First(&clientMetadata, &models.ClientMetaData{ClientID: ti.ClientID}).Error
 		if err != nil {
 			sentry.CaptureException(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -176,7 +127,7 @@ func (ctrl *OAuthController) ListClientHandler(w http.ResponseWriter, r *http.Re
 		parsed, _ := url.Parse(ti.RedirectURI)
 		scopes := map[string]string{}
 		for _, sc := range strings.Split(ti.Scope, " ") {
-			scopes[sc] = ctrl.service.scopes[sc]
+			scopes[sc] = ctrl.Service.Scopes[sc]
 		}
 		response = append(response, models.ListClientsResponse{
 			Domain:   parsed.Host,
@@ -201,7 +152,7 @@ func (ctrl *OAuthController) UpdateClientHandler(w http.ResponseWriter, r *http.
 //deletes all tokens a user currently has for a given client
 func (ctrl *OAuthController) DeleteClientHandler(w http.ResponseWriter, r *http.Request) {
 	clientId := mux.Vars(r)["clientId"]
-	err := ctrl.service.db.Table(constants.TokenTableName).Delete(&oauth2gorm.TokenStoreItem{}, &oauth2gorm.TokenStoreItem{ClientID: clientId}).Error
+	err := ctrl.Service.DB.Table(constants.TokenTableName).Delete(&oauth2gorm.TokenStoreItem{}, &oauth2gorm.TokenStoreItem{ClientID: clientId}).Error
 	if err != nil {
 		sentry.CaptureException(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -242,7 +193,7 @@ func (ctrl *OAuthController) authenticateUser(r *http.Request) (token string, er
 		return "", fmt.Errorf("Cannot authenticate user, login or password missing.")
 	}
 	//authenticate user against lndhub
-	resp, err := http.PostForm(fmt.Sprintf("%s/auth", ctrl.service.Config.LndHubUrl), r.Form)
+	resp, err := http.PostForm(fmt.Sprintf("%s/auth", ctrl.Service.Config.LndHubUrl), r.Form)
 	if err != nil {
 		return "", fmt.Errorf("Error authenticating user %s", err.Error())
 	}
@@ -273,7 +224,7 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 	id := random.New().String(clientIdLength)
 	secret := random.New().String(clientSecretLength)
 
-	err = ctrl.service.clientStore.Create(r.Context(), &mdls.Client{
+	err = ctrl.Service.ClientStore.Create(r.Context(), &mdls.Client{
 		ID:     id,
 		Secret: secret,
 		Domain: req.Domain,
@@ -287,7 +238,7 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	err = ctrl.service.db.Create(&models.ClientMetaData{
+	err = ctrl.Service.DB.Create(&models.ClientMetaData{
 		ClientID: id,
 		Name:     req.Name,
 		ImageUrl: req.ImageUrl,
@@ -320,7 +271,7 @@ func (ctrl *OAuthController) AuthorizeScopeHandler(w http.ResponseWriter, r *htt
 		return "", fmt.Errorf("Empty scope is not allowed")
 	}
 	for _, scope := range strings.Split(requestedScope, " ") {
-		if _, found := ctrl.service.scopes[scope]; !found {
+		if _, found := ctrl.Service.Scopes[scope]; !found {
 			err = fmt.Errorf("Scope not allowed: %s", scope)
 			sentry.CaptureException(err)
 			return "", err

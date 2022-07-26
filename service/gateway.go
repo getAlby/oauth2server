@@ -1,9 +1,8 @@
-package gateway
+package service
 
 import (
 	"net/http"
 	"net/http/httputil"
-	"oauth2server/controllers"
 	"strings"
 
 	"github.com/getsentry/sentry-go"
@@ -12,7 +11,7 @@ import (
 
 type OriginServer struct {
 	Origin      string `json:"origin"`
-	svc         *controllers.Service
+	svc         *Service
 	proxy       *httputil.ReverseProxy
 	Scope       string `json:"scope"`
 	MatchRoute  string `json:"matchRoute"`

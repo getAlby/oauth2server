@@ -1,12 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
+	"oauth2server/constants"
+	"oauth2server/controllers"
+	"oauth2server/models"
+	"oauth2server/service"
 	"os"
 	"time"
 
@@ -32,7 +32,7 @@ func main() {
 		logrus.Errorf("Error loading environment variables: %v", err)
 	}
 	// Load in config from env vars
-	conf := &Config{}
+	conf := &service.Config{}
 	err = envconfig.Process("", conf)
 	if err != nil {
 		logrus.Fatalf("Error loading environment variables: %v", err)
@@ -59,7 +59,7 @@ func main() {
 	}
 
 	//initialize extra db tables
-	err = db.AutoMigrate(&ClientMetaData{})
+	err = db.AutoMigrate(&models.ClientMetaData{})
 	if err != nil {
 		logrus.Fatalf("Error connecting db: %s", err.Error())
 	}
@@ -67,7 +67,7 @@ func main() {
 	manager.MapClientStorage(clientStore)
 	manager.MapTokenStorage(tokenStore)
 
-	manager.SetValidateURIHandler(CheckRedirectUriDomain)
+	manager.SetValidateURIHandler(controllers.CheckRedirectUriDomain)
 
 	manager.SetAuthorizeCodeTokenCfg(&manage.Config{
 		AccessTokenExp:    time.Duration(conf.AccessTokenExpSeconds) * time.Second,
@@ -76,14 +76,14 @@ func main() {
 	})
 
 	srv := server.NewServer(server.NewConfig(), manager)
-	svc := &Service{
-		db:          db,
-		oauthServer: srv,
+	svc := &service.Service{
+		DB:          db,
+		OauthServer: srv,
 		Config:      conf,
-		clientStore: clientStore,
+		ClientStore: clientStore,
 	}
-	controller := &OAuthController{
-		service: svc,
+	controller := &controllers.OAuthController{
+		Service: svc,
 	}
 	srv.SetUserAuthorizationHandler(controller.UserAuthorizeHandler)
 	srv.SetInternalErrorHandler(controller.InternalErrorHandler)
@@ -105,7 +105,7 @@ func main() {
 	subRouter.Use(controller.UserAuthorizeMiddleware)
 
 	//Initialize API gateway
-	gateways, err := svc.initGateways()
+	gateways, err := svc.InitGateways()
 	if err != nil {
 		logrus.Fatal(err)
 	}
@@ -124,42 +124,6 @@ func registerMiddleware(in http.Handler) http.Handler {
 	result := sentryhttp.New(sentryhttp.Options{}).Handle(loggingHandler)
 	return result
 }
-
-func (svc *Service) initGateways() (result []*OriginServer, err error) {
-	targetBytes, err := ioutil.ReadFile(svc.Config.TargetFile)
-	if err != nil {
-		return nil, err
-	}
-	result = []*OriginServer{}
-	err = json.Unmarshal(targetBytes, &result)
-	if err != nil {
-		return nil, err
-	}
-	svc.scopes = map[string]string{}
-	originHelperMap := map[string]*httputil.ReverseProxy{}
-	for _, origin := range result {
-		origin.svc = svc
-		svc.scopes[origin.Scope] = origin.Description
-		//avoid creating too much identical origin server objects
-		//by storing them in a map
-		value, found := originHelperMap[origin.Origin]
-		if found {
-			//use existing one
-			origin.proxy = value
-		} else {
-			//create new one
-			originUrl, err := url.Parse(origin.Origin)
-			if err != nil {
-				return nil, err
-			}
-			proxy := httputil.NewSingleHostReverseProxy(originUrl)
-			originHelperMap[origin.Origin] = proxy
-			origin.proxy = proxy
-		}
-	}
-	return result, nil
-}
-
 func initStores(dsn string) (clientStore *oauth2gorm.ClientStore, tokenStore *oauth2gorm.TokenStore, db *gorm.DB, err error) {
 	//connect database
 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
@@ -167,16 +131,16 @@ func initStores(dsn string) (clientStore *oauth2gorm.ClientStore, tokenStore *oa
 		return nil, nil, nil, err
 	}
 	//migrated from legacy tables
-	err = db.Table(clientTableName).AutoMigrate(&oauth2gorm.ClientStoreItem{})
+	err = db.Table(constants.ClientTableName).AutoMigrate(&oauth2gorm.ClientStoreItem{})
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	err = db.Table(tokenTableName).AutoMigrate(&oauth2gorm.TokenStoreItem{})
+	err = db.Table(constants.TokenTableName).AutoMigrate(&oauth2gorm.TokenStoreItem{})
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	tokenStore = oauth2gorm.NewTokenStoreWithDB(&oauth2gorm.Config{TableName: tokenTableName}, db, gcIntervalSeconds)
-	clientStore = oauth2gorm.NewClientStoreWithDB(&oauth2gorm.Config{TableName: clientTableName}, db)
+	tokenStore = oauth2gorm.NewTokenStoreWithDB(&oauth2gorm.Config{TableName: constants.TokenTableName}, db, constants.GCIntervalSeconds)
+	clientStore = oauth2gorm.NewClientStoreWithDB(&oauth2gorm.Config{TableName: constants.ClientTableName}, db)
 
 	logrus.Info("Succesfully connected to postgres database")
 	return

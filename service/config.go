@@ -1,4 +1,4 @@
-package controllers
+package service
 
 type Config struct {
 	Port                   int    `default:"8081"`
