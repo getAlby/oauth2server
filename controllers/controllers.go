@@ -27,11 +27,6 @@ type ctx_id_type string
 
 var CONTEXT_ID_KEY ctx_id_type = "ID"
 
-const (
-	clientIdLength     = 10
-	clientSecretLength = 20
-)
-
 type OAuthController struct {
 	Service *service.Service
 }
@@ -208,6 +203,7 @@ func (ctrl *OAuthController) authenticateUser(r *http.Request) (token string, er
 	}
 	return tokenResponse.AccessToken, nil
 }
+
 func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.Request) {
 	req := &models.CreateClientRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
@@ -221,8 +217,8 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	id := random.New().String(clientIdLength)
-	secret := random.New().String(clientSecretLength)
+	id := random.New().String(constants.ClientIdLength)
+	secret := random.New().String(constants.ClientSecretLength)
 
 	err = ctrl.Service.ClientStore.Create(r.Context(), &mdls.Client{
 		ID:     id,
@@ -278,22 +274,6 @@ func (ctrl *OAuthController) AuthorizeScopeHandler(w http.ResponseWriter, r *htt
 		}
 	}
 	return requestedScope, nil
-}
-func CheckRedirectUriDomain(baseURI, redirectURI string) error {
-	parsedClientUri, err := url.Parse(baseURI)
-	if err != nil {
-		return err
-	}
-	parsedRedirect, err := url.Parse(redirectURI)
-	if err != nil {
-		return err
-	}
-	if parsedClientUri.Host != parsedRedirect.Host || parsedClientUri.Scheme != parsedRedirect.Scheme {
-		err = fmt.Errorf("Wrong redirect uri for client. redirect_uri %s, client domain %s", baseURI, redirectURI)
-		sentry.CaptureException(err)
-		return err
-	}
-	return nil
 }
 
 type TokenResponse struct {
