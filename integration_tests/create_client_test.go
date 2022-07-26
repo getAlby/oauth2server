@@ -1,6 +1,9 @@
 package integrationtests
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"oauth2server/controllers"
 	"oauth2server/service"
 	"testing"
@@ -28,5 +31,13 @@ func TestCreateClient(t *testing.T) {
 	svc.OauthServer.SetUserAuthorizationHandler(controller.UserAuthorizeHandler)
 	svc.OauthServer.SetInternalErrorHandler(controller.InternalErrorHandler)
 	svc.OauthServer.SetAuthorizeScopeHandler(controller.AuthorizeScopeHandler)
-
+	_, err = svc.InitGateways()
+	assert.NoError(t, err)
+	req, err := http.NewRequest(http.MethodGet, "/scopes", nil)
+	assert.NoError(t, err)
+	rec := httptest.NewRecorder()
+	http.HandlerFunc(controller.ScopeHandler).ServeHTTP(rec, req)
+	status := rec.Result().StatusCode
+	assert.Equal(t, http.StatusOK, status)
+	fmt.Println(rec.Body.String())
 }
