@@ -1,10 +1,14 @@
 package integrationtests
 
 import (
-	"fmt"
+	"bytes"
+	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"oauth2server/constants"
 	"oauth2server/controllers"
+	"oauth2server/models"
 	"oauth2server/service"
 	"testing"
 
@@ -14,7 +18,7 @@ import (
 var testConfig = &service.Config{
 	Port:                   8081,
 	JWTSecret:              []byte("supersecret"),
-	DatabaseUri:            "postgres://user:password@localhost:5432/oauthtests?sslmode=disable",
+	DatabaseUri:            "postgres://user:password@localhost/oauthtests?sslmode=disable",
 	LndHubUrl:              "https://lndhub.regtest.getalby.com",
 	TargetFile:             "/Users/kwinten/Alby/oauth2server/targets.json",
 	AccessTokenExpSeconds:  3600,
@@ -33,11 +37,35 @@ func TestCreateClient(t *testing.T) {
 	svc.OauthServer.SetAuthorizeScopeHandler(controller.AuthorizeScopeHandler)
 	_, err = svc.InitGateways()
 	assert.NoError(t, err)
-	req, err := http.NewRequest(http.MethodGet, "/scopes", nil)
+	reqBody := &models.CreateClientRequest{
+		Domain:   "example.com",
+		Name:     "Test",
+		ImageUrl: "https://example.com/image.jpg",
+		URL:      "https://example.com",
+	}
+	var buf bytes.Buffer
+	err = json.NewEncoder(&buf).Encode(reqBody)
+	assert.NoError(t, err)
+	req, err := http.NewRequest(http.MethodPost, "/admin/clients", &buf)
 	assert.NoError(t, err)
 	rec := httptest.NewRecorder()
-	http.HandlerFunc(controller.ScopeHandler).ServeHTTP(rec, req)
+	http.HandlerFunc(controller.CreateClientHandler).ServeHTTP(rec, req)
 	status := rec.Result().StatusCode
 	assert.Equal(t, http.StatusOK, status)
-	fmt.Println(rec.Body.String())
+	resp := models.CreateClientResponse{}
+	err = json.NewDecoder(rec.Body).Decode(&resp)
+	assert.NoError(t, err)
+	//check length of id, secret
+	assert.Equal(t, constants.ClientIdLength, len(resp.ClientId))
+	assert.Equal(t, constants.ClientSecretLength, len(resp.ClientSecret))
+	//check other fields
+	assert.Equal(t, reqBody.Name, resp.Name)
+	assert.Equal(t, reqBody.ImageUrl, resp.ImageUrl)
+	//look up object in database and check fields
+	client, err := svc.ClientStore.GetByID(context.Background(), resp.ClientId)
+	assert.NoError(t, err)
+	assert.Equal(t, reqBody.Domain, client.GetDomain())
+	assert.Equal(t, resp.ClientSecret, client.GetSecret())
+	err = dropTables(svc.DB, constants.ClientTableName, constants.ClientMetadataTableName, constants.TokenTableName)
+	assert.NoError(t, err)
 }
