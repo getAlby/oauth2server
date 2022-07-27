@@ -20,7 +20,7 @@ var testConfig = &service.Config{
 	JWTSecret:              []byte("supersecret"),
 	DatabaseUri:            "postgres://user:password@localhost/oauthtests?sslmode=disable",
 	LndHubUrl:              "https://lndhub.regtest.getalby.com",
-	TargetFile:             "./targets.json",
+	TargetFile:             "targets.json",
 	AccessTokenExpSeconds:  3600,
 	RefreshTokenExpSeconds: 3600,
 }
