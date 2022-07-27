@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	mdls "github.com/go-oauth2/oauth2/v4/models"
+	"github.com/go-playground/validator/v10"
 
 	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
 	"github.com/getsentry/sentry-go"
@@ -216,7 +217,15 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
+	err = validator.New().Struct(req)
+	if err != nil {
+		_, err = w.Write([]byte(err.Error()))
+		if err != nil {
+			logrus.Error(err)
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	id := random.New().String(constants.ClientIdLength)
 	secret := random.New().String(constants.ClientSecretLength)
 

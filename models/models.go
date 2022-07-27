@@ -15,9 +15,9 @@ type ListClientsResponse struct {
 }
 
 type CreateClientRequest struct {
-	Domain   string `json:"domain"`
+	Domain   string `json:"domain" validate:"required,uri"`
 	UserID   string `json:"userId"`
-	Name     string `json:"name"`
+	Name     string `json:"name" validate:"required"`
 	ImageUrl string `json:"imageUrl"`
 	URL      string `json:"url,omitempty"`
 }
