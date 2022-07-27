@@ -1,11 +1,7 @@
 package integrationtests
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"net/http"
-	"net/http/httptest"
 	"oauth2server/constants"
 	"oauth2server/controllers"
 	"oauth2server/models"
@@ -15,6 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+//account on lndhub.regtest.getalby.com
+var testAccountLogin = "yS0IRVe5F7v6rxr5M2jH"
+var testAccountPassword = "Zw7TE46yR0m1GeVFNOui"
+
 var testConfig = &service.Config{
 	Port:                   8081,
 	JWTSecret:              []byte("supersecret"),
@@ -23,6 +23,13 @@ var testConfig = &service.Config{
 	TargetFile:             "../targets.json",
 	AccessTokenExpSeconds:  3600,
 	RefreshTokenExpSeconds: 3600,
+}
+
+var testClient = &models.CreateClientRequest{
+	Domain:   "http://example.com",
+	Name:     "Test",
+	ImageUrl: "https://example.com/image.jpg",
+	URL:      "https://example.com",
 }
 
 func TestCreateClient(t *testing.T) {
@@ -37,24 +44,8 @@ func TestCreateClient(t *testing.T) {
 	svc.OauthServer.SetAuthorizeScopeHandler(controller.AuthorizeScopeHandler)
 	_, err = svc.InitGateways()
 	assert.NoError(t, err)
-	reqBody := &models.CreateClientRequest{
-		Domain:   "http://example.com",
-		Name:     "Test",
-		ImageUrl: "https://example.com/image.jpg",
-		URL:      "https://example.com",
-	}
-	var buf bytes.Buffer
-	err = json.NewEncoder(&buf).Encode(reqBody)
-	assert.NoError(t, err)
-	req, err := http.NewRequest(http.MethodPost, "/admin/clients", &buf)
-	assert.NoError(t, err)
-	rec := httptest.NewRecorder()
-	http.HandlerFunc(controller.CreateClientHandler).ServeHTTP(rec, req)
-	status := rec.Result().StatusCode
-	assert.Equal(t, http.StatusOK, status)
-	resp := models.CreateClientResponse{}
-	err = json.NewDecoder(rec.Body).Decode(&resp)
-	assert.NoError(t, err)
+	reqBody := testClient
+	resp, err := createClient(controller, reqBody)
 	//check length of id, secret
 	assert.Equal(t, constants.ClientIdLength, len(resp.ClientId))
 	assert.Equal(t, constants.ClientSecretLength, len(resp.ClientSecret))
@@ -68,13 +59,8 @@ func TestCreateClient(t *testing.T) {
 	assert.Equal(t, resp.ClientSecret, client.GetSecret())
 	//try to create a client without a valid domain
 	reqBody.Domain = "invalid"
-	err = json.NewEncoder(&buf).Encode(reqBody)
-	assert.NoError(t, err)
-	req, err = http.NewRequest(http.MethodPost, "/admin/clients", &buf)
-	assert.NoError(t, err)
-	rec = httptest.NewRecorder()
-	http.HandlerFunc(controller.CreateClientHandler).ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusBadRequest, rec.Result().StatusCode)
+	resp, err = createClient(controller, reqBody)
+	assert.Error(t, err)
 	err = dropTables(svc.DB, constants.ClientTableName, constants.ClientMetadataTableName, constants.TokenTableName)
 	assert.NoError(t, err)
 }
