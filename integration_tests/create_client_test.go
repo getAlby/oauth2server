@@ -38,7 +38,7 @@ func TestCreateClient(t *testing.T) {
 	_, err = svc.InitGateways()
 	assert.NoError(t, err)
 	reqBody := &models.CreateClientRequest{
-		Domain:   "example.com",
+		Domain:   "http://example.com",
 		Name:     "Test",
 		ImageUrl: "https://example.com/image.jpg",
 		URL:      "https://example.com",
@@ -66,6 +66,15 @@ func TestCreateClient(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, reqBody.Domain, client.GetDomain())
 	assert.Equal(t, resp.ClientSecret, client.GetSecret())
+	//try to create a client without a valid domain
+	reqBody.Domain = "invalid"
+	err = json.NewEncoder(&buf).Encode(reqBody)
+	assert.NoError(t, err)
+	req, err = http.NewRequest(http.MethodPost, "/admin/clients", &buf)
+	assert.NoError(t, err)
+	rec = httptest.NewRecorder()
+	http.HandlerFunc(controller.CreateClientHandler).ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusBadRequest, rec.Result().StatusCode)
 	err = dropTables(svc.DB, constants.ClientTableName, constants.ClientMetadataTableName, constants.TokenTableName)
 	assert.NoError(t, err)
 }

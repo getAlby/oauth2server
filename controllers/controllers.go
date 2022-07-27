@@ -210,20 +210,20 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		logrus.Errorf("Error decoding client info request %s", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
 		_, err = w.Write([]byte("Could not parse create client request"))
 		if err != nil {
 			logrus.Error(err)
 		}
-		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	err = validator.New().Struct(req)
 	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
 		_, err = w.Write([]byte(err.Error()))
 		if err != nil {
 			logrus.Error(err)
 		}
-		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	id := random.New().String(constants.ClientIdLength)
@@ -236,11 +236,11 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 	})
 	if err != nil {
 		logrus.Errorf("Error storing client info %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
 		_, err = w.Write([]byte("Something went wrong while storing client info"))
 		if err != nil {
 			logrus.Error(err)
 		}
-		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	err = ctrl.Service.DB.Create(&models.ClientMetaData{
@@ -251,11 +251,11 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 	}).Error
 	if err != nil {
 		logrus.Errorf("Error storing client info %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
 		_, err = w.Write([]byte("Something went wrong while storing client info"))
 		if err != nil {
 			logrus.Error(err)
 		}
-		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.Header().Add("Content-type", "application/json")
