@@ -1,7 +1,6 @@
 package integrationtests
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -31,10 +30,11 @@ func TestCreateToken(t *testing.T) {
 	rec, err := fetchCode(cli.ClientId, testClient.Domain, "balance:read", controller)
 	assert.NoError(t, err)
 	//extract code from Location headers
-	fmt.Println(rec.HeaderMap)
-	fmt.Println(rec.Body.String())
 	loc := rec.Header().Get("Location")
-	fmt.Println(loc)
+	redirect, err := url.Parse(loc)
+	assert.NoError(t, err)
+	code := redirect.Query().Get("code")
+	assert.NotEmpty(t, code)
 	//make request to fetch token
 	//validate access token, refresh token with object from database
 	err = dropTables(svc.DB, constants.ClientTableName, constants.ClientMetadataTableName, constants.TokenTableName)
@@ -75,7 +75,9 @@ func TestListDeleteTokensForClient(t *testing.T) {
 	//create code using user credentials
 	//extract code from Location headers
 	//make request to fetch token
-	//validate access token, refresh token with object from database
+	//List clients
+	//delete client
+	//list clients again
 	err = dropTables(svc.DB, constants.ClientTableName, constants.ClientMetadataTableName, constants.TokenTableName)
 	assert.NoError(t, err)
 }
