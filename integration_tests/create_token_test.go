@@ -25,7 +25,7 @@ func TestCreateToken(t *testing.T) {
 	svc.OauthServer.SetAuthorizeScopeHandler(controller.AuthorizeScopeHandler)
 	_, err = svc.InitGateways()
 	assert.NoError(t, err)
-	cli, err := createClient(controller, testClient)
+	cli, err := createClient(controller, &testClient)
 	assert.NoError(t, err)
 	//create code using user credentials
 	rec, err := fetchCode(cli.ClientId, testClient.Domain, "balance:read", controller)
@@ -70,7 +70,7 @@ func TestListDeleteTokensForClient(t *testing.T) {
 	svc.OauthServer.SetAuthorizeScopeHandler(controller.AuthorizeScopeHandler)
 	_, err = svc.InitGateways()
 	assert.NoError(t, err)
-	_, err = createClient(controller, testClient)
+	_, err = createClient(controller, &testClient)
 	assert.NoError(t, err)
 	//create code using user credentials
 	//extract code from Location headers

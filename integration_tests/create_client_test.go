@@ -26,7 +26,7 @@ var testConfig = &service.Config{
 	RefreshTokenExpSeconds: 3600,
 }
 
-var testClient = &models.CreateClientRequest{
+var testClient = models.CreateClientRequest{
 	Domain:   "http://example.com",
 	Name:     "Test",
 	ImageUrl: "https://example.com/image.jpg",
@@ -46,7 +46,8 @@ func TestCreateClient(t *testing.T) {
 	_, err = svc.InitGateways()
 	assert.NoError(t, err)
 	reqBody := testClient
-	resp, err := createClient(controller, reqBody)
+	resp, err := createClient(controller, &reqBody)
+	assert.NoError(t, err)
 	//check length of id, secret
 	assert.Equal(t, constants.ClientIdLength, len(resp.ClientId))
 	assert.Equal(t, constants.ClientSecretLength, len(resp.ClientSecret))
@@ -60,7 +61,7 @@ func TestCreateClient(t *testing.T) {
 	assert.Equal(t, resp.ClientSecret, client.GetSecret())
 	//try to create a client without a valid domain
 	reqBody.Domain = "invalid"
-	resp, err = createClient(controller, reqBody)
+	_, err = createClient(controller, &reqBody)
 	assert.Error(t, err)
 	err = dropTables(svc.DB, constants.ClientTableName, constants.ClientMetadataTableName, constants.TokenTableName)
 	assert.NoError(t, err)
