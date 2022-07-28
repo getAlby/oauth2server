@@ -18,7 +18,7 @@ var testAccountPassword = os.Getenv("LNDHUB_PASSWORD")
 
 var testConfig = &service.Config{
 	Port:                   8081,
-	JWTSecret:              []byte(os.Getenv("s")),
+	JWTSecret:              []byte(os.Getenv("LNDHUB_JWT_SECRET")),
 	DatabaseUri:            "postgres://user:password@localhost/oauthtests?sslmode=disable",
 	LndHubUrl:              "https://lndhub.regtest.getalby.com",
 	TargetFile:             "../targets.json",
