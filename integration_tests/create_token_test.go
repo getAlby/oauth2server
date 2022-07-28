@@ -8,10 +8,12 @@ import (
 	"net/url"
 	"oauth2server/constants"
 	"oauth2server/controllers"
+	"oauth2server/models"
 	"oauth2server/service"
 	"strings"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -107,14 +109,44 @@ func TestListDeleteTokensForClient(t *testing.T) {
 	svc.OauthServer.SetAuthorizeScopeHandler(controller.AuthorizeScopeHandler)
 	_, err = svc.InitGateways()
 	assert.NoError(t, err)
-	_, err = createClient(controller, &testClient)
+	cli, err := createClient(controller, &testClient)
 	assert.NoError(t, err)
 	//create code using user credentials
+	rec, err := fetchCode(cli.ClientId, testClient.Domain, "balance:read", controller)
+	assert.NoError(t, err)
 	//extract code from Location headers
+	loc := rec.Header().Get("Location")
+	redirect, err := url.Parse(loc)
+	assert.NoError(t, err)
+	code := redirect.Query().Get("code")
 	//make request to fetch token
-	//List clients
+	_, err = fetchToken(cli.ClientId, cli.ClientSecret, code, testClient.Domain, controller)
+	assert.NoError(t, err)
+	//list clients
+	req, err := http.NewRequest(http.MethodGet, "/clients", nil)
+	assert.NoError(t, err)
+	req.SetBasicAuth(testAccountLogin, testAccountPassword)
+	rec = httptest.NewRecorder()
+	controller.UserAuthorizeMiddleware(http.HandlerFunc(controller.ListClientHandler)).ServeHTTP(rec, req)
+	clients := []models.ListClientsResponse{}
+	err = json.NewDecoder(rec.Body).Decode(&clients)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, clients)
+	assert.Equal(t, testClient.Name, clients[0].Name)
 	//delete client
-	//list clients again
+	req.Method = http.MethodDelete
+	req = mux.SetURLVars(req, map[string]string{
+		"clientId": clients[0].ID,
+	})
+	rec = httptest.NewRecorder()
+	controller.UserAuthorizeMiddleware(http.HandlerFunc(controller.DeleteClientHandler)).ServeHTTP(rec, req)
+	assert.Equal(t, rec.Result().StatusCode, http.StatusOK)
+	//list clients
+	rec = httptest.NewRecorder()
+	controller.UserAuthorizeMiddleware(http.HandlerFunc(controller.ListClientHandler)).ServeHTTP(rec, req)
+	err = json.NewDecoder(rec.Body).Decode(&clients)
+	assert.NoError(t, err)
+	assert.Empty(t, clients)
 	err = dropTables(svc.DB, constants.ClientTableName, constants.ClientMetadataTableName, constants.TokenTableName)
 	assert.NoError(t, err)
 }
