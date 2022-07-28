@@ -145,6 +145,45 @@ func (ctrl *OAuthController) ListClientHandler(w http.ResponseWriter, r *http.Re
 func (ctrl *OAuthController) UpdateClientHandler(w http.ResponseWriter, r *http.Request) {
 }
 
+func (ctrl *OAuthController) UpdateClientMetadataHandler(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["clientId"]
+	req := &models.CreateClientRequest{}
+	err := json.NewDecoder(r.Body).Decode(req)
+	if err != nil {
+		logrus.Errorf("Error decoding client info request %s", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		_, err = w.Write([]byte("Could not parse create client request"))
+		if err != nil {
+			logrus.Error(err)
+		}
+		return
+	}
+	err = ctrl.Service.DB.FirstOrCreate(&models.ClientMetaData{
+		ClientID: id,
+		Name:     req.Name,
+		ImageUrl: req.ImageUrl,
+		URL:      req.URL,
+	}, &models.ClientMetaData{ClientID: id}).Error
+	if err != nil {
+		logrus.Errorf("Error storing client info %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err = w.Write([]byte("Something went wrong while storing client info"))
+		if err != nil {
+			logrus.Error(err)
+		}
+		return
+	}
+	w.Header().Add("Content-type", "application/json")
+	err = json.NewEncoder(w).Encode(&models.CreateClientResponse{
+		ClientId: id,
+		Name:     req.Name,
+		ImageUrl: req.ImageUrl,
+	})
+	if err != nil {
+		logrus.Error(err)
+	}
+}
+
 //deletes all tokens a user currently has for a given client
 func (ctrl *OAuthController) DeleteClientHandler(w http.ResponseWriter, r *http.Request) {
 	clientId := mux.Vars(r)["clientId"]
