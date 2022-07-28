@@ -34,3 +34,7 @@ jobs:
             uses: actions/checkout@v2
           - name: Run tests
             run:  go test -p 1 -v -cover -coverpkg=./... ./...
+            env:
+              LNDHUB_JWT_SECRET: ${{ secrets.LNDHUB_JWT_SECRET }}
+              LNDHUB_LOGIN: ${{ secrets.LNDHUB_LOGIN }}
+              LNDHUB_PASSWORD: ${{ secrets.LNDHUB_PASSWORD }}

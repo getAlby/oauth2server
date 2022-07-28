@@ -6,18 +6,19 @@ import (
 	"oauth2server/controllers"
 	"oauth2server/models"
 	"oauth2server/service"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 //account on lndhub.regtest.getalby.com
-var testAccountLogin = "yS0IRVe5F7v6rxr5M2jH"
-var testAccountPassword = "Zw7TE46yR0m1GeVFNOui"
+var testAccountLogin = os.Getenv("LNDHUB_LOGIN")
+var testAccountPassword = os.Getenv("LNDHUB_PASSWORD")
 
 var testConfig = &service.Config{
 	Port:                   8081,
-	JWTSecret:              []byte("supersecret"),
+	JWTSecret:              []byte(os.Getenv("s")),
 	DatabaseUri:            "postgres://user:password@localhost/oauthtests?sslmode=disable",
 	LndHubUrl:              "https://lndhub.regtest.getalby.com",
 	TargetFile:             "../targets.json",
