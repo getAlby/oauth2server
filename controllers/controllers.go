@@ -50,7 +50,11 @@ func (ctrl *OAuthController) ScopeHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (ctrl *OAuthController) TokenHandler(w http.ResponseWriter, r *http.Request) {
-	err := ctrl.Service.OauthServer.HandleTokenRequest(w, r)
+	err := r.ParseForm()
+	if err != nil {
+		sentry.CaptureException(err)
+	}
+	err = ctrl.Service.OauthServer.HandleTokenRequest(w, r)
 	if err != nil {
 		sentry.CaptureException(err)
 	}
