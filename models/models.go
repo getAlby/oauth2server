@@ -32,9 +32,10 @@ type ClientMetaData struct {
 
 type CreateClientResponse struct {
 	Name         string `json:"name"`
+	Url          string `json:"url"`
 	ImageUrl     string `json:"imageUrl"`
 	ClientId     string `json:"clientId"`
-	ClientSecret string `json:"clientSecret"`
+	ClientSecret string `json:"clientSecret,omitempty"`
 }
 type LNDhubClaims struct {
 	ID        int64 `json:"id"`

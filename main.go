@@ -61,6 +61,8 @@ func main() {
 
 	//should not be publicly accesible
 	r.HandleFunc("/admin/clients", controller.CreateClientHandler).Methods(http.MethodPost)
+	r.HandleFunc("/admin/clients", controller.ListAllClientsHandler).Methods(http.MethodGet)
+	r.HandleFunc("/admin/clients/{clientId}", controller.FetchClientHandler).Methods(http.MethodGet)
 	r.HandleFunc("/admin/clients/{clientId}", controller.UpdateClientMetadataHandler).Methods(http.MethodPut)
 
 	//manages connected apps for users

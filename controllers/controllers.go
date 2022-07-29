@@ -13,6 +13,7 @@ import (
 
 	mdls "github.com/go-oauth2/oauth2/v4/models"
 	"github.com/go-playground/validator/v10"
+	"gorm.io/gorm"
 
 	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
 	"github.com/getsentry/sentry-go"
@@ -96,6 +97,55 @@ func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http
 		return "", fmt.Errorf("Cannot authenticate user, token does not contain user id")
 	}
 	return fmt.Sprintf("%.0f", claims["id"].(float64)), nil
+}
+
+func (ctrl *OAuthController) ListAllClientsHandler(w http.ResponseWriter, r *http.Request) {
+	result := []models.ClientMetaData{}
+	err := ctrl.Service.DB.Find(&result, &models.ClientMetaData{}).Error
+	if err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	response := []models.ListClientsResponse{}
+	for _, md := range result {
+		response = append(response, models.ListClientsResponse{
+			ID:       md.ClientID,
+			Name:     md.Name,
+			ImageURL: md.ImageUrl,
+			URL:      md.URL,
+		})
+	}
+	w.Header().Add("Content-type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		logrus.Error(err)
+	}
+}
+
+func (ctrl *OAuthController) FetchClientHandler(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["clientId"]
+	result := models.ClientMetaData{}
+	err := ctrl.Service.DB.First(&result, &models.ClientMetaData{ClientID: id}).Error
+	if err != nil {
+		sentry.CaptureException(err)
+		status := http.StatusInternalServerError
+		if err == gorm.ErrRecordNotFound {
+			status = http.StatusNotFound
+		}
+		http.Error(w, err.Error(), status)
+		return
+	}
+	w.Header().Add("Content-type", "application/json")
+	err = json.NewEncoder(w).Encode(&models.ListClientsResponse{
+		ID:       result.ClientID,
+		Name:     result.Name,
+		ImageURL: result.ImageUrl,
+		URL:      result.URL,
+	})
+	if err != nil {
+		logrus.Error(err)
+	}
 }
 
 func (ctrl *OAuthController) ListClientHandler(w http.ResponseWriter, r *http.Request) {
@@ -193,6 +243,7 @@ func (ctrl *OAuthController) UpdateClientMetadataHandler(w http.ResponseWriter, 
 		ClientId: id,
 		Name:     req.Name,
 		ImageUrl: req.ImageUrl,
+		Url:      req.URL,
 	})
 	if err != nil {
 		logrus.Error(err)
