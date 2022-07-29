@@ -55,13 +55,15 @@ func (ctrl *OAuthController) TokenHandler(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		sentry.CaptureException(err)
 	}
-	err = r.ParseForm()
-	if err != nil {
-		sentry.CaptureException(err)
+	if len(tokenRequest) != 0 {
+		err = r.ParseForm()
+		if err != nil {
+			sentry.CaptureException(err)
+		}
+		r.Form.Add("grant_type", tokenRequest["grant_type"])
+		r.Form.Add("code", tokenRequest["code"])
+		r.Form.Add("redirect_uri", tokenRequest["redirect_uri"])
 	}
-	r.Form.Add("grant_type", tokenRequest["grant_type"])
-	r.Form.Add("code", tokenRequest["code"])
-	r.Form.Add("redirect_uri", tokenRequest["redirect_uri"])
 	err = ctrl.Service.OauthServer.HandleTokenRequest(w, r)
 	if err != nil {
 		sentry.CaptureException(err)
