@@ -8,9 +8,11 @@ import (
 	"os"
 	"time"
 
+	prometheusmiddleware "github.com/albertogviana/prometheus-middleware"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 
 	"github.com/getsentry/sentry-go"
@@ -79,6 +81,16 @@ func main() {
 	}
 	for _, gw := range gateways {
 		r.Handle(gw.MatchRoute, gw)
+	}
+	if conf.EnablePrometheus {
+		prommw := prometheusmiddleware.NewPrometheusMiddleware(prometheusmiddleware.Opts{})
+		r.Use(prommw.InstrumentHandlerDuration)
+		go func() {
+			promRouter := mux.NewRouter()
+			promRouter.Handle("/metrics", promhttp.Handler())
+			logrus.Infof("Prometheus server starting on port %d", conf.PrometheusPort)
+			logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.PrometheusPort), promRouter))
+		}()
 	}
 
 	logrus.Infof("Server starting on port %d", conf.Port)
