@@ -50,7 +50,19 @@ func (ctrl *OAuthController) ScopeHandler(w http.ResponseWriter, r *http.Request
 }
 
 func (ctrl *OAuthController) TokenHandler(w http.ResponseWriter, r *http.Request) {
-	err := ctrl.Service.OauthServer.HandleTokenRequest(w, r)
+	tokenRequest := map[string]string{}
+	err := json.NewDecoder(r.Body).Decode(&tokenRequest)
+	if err != nil {
+		sentry.CaptureException(err)
+	}
+	err = r.ParseForm()
+	if err != nil {
+		sentry.CaptureException(err)
+	}
+	r.Form.Set("grant_type", tokenRequest["grant_type"])
+	r.Form.Set("code", tokenRequest["code"])
+	r.Form.Set("redirect_uri", tokenRequest["redirect_uri"])
+	err = ctrl.Service.OauthServer.HandleTokenRequest(w, r)
 	if err != nil {
 		sentry.CaptureException(err)
 	}
