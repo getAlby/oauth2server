@@ -158,12 +158,27 @@ func (ctrl *OAuthController) UpdateClientMetadataHandler(w http.ResponseWriter, 
 		}
 		return
 	}
-	err = ctrl.Service.DB.FirstOrCreate(&models.ClientMetaData{
-		ClientID: id,
-		Name:     req.Name,
-		ImageUrl: req.ImageUrl,
-		URL:      req.URL,
-	}, &models.ClientMetaData{ClientID: id}).Error
+	found := &models.ClientMetaData{}
+	err = ctrl.Service.DB.FirstOrCreate(found, &models.ClientMetaData{ClientID: id}).Error
+	if err != nil {
+		logrus.Errorf("Error storing client info %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err = w.Write([]byte("Something went wrong while storing client info"))
+		if err != nil {
+			logrus.Error(err)
+		}
+		return
+	}
+	if req.Name != "" {
+		found.Name = req.Name
+	}
+	if req.ImageUrl != "" {
+		found.ImageUrl = req.ImageUrl
+	}
+	if req.URL != "" {
+		found.URL = req.URL
+	}
+	err = ctrl.Service.DB.Save(found).Error
 	if err != nil {
 		logrus.Errorf("Error storing client info %s", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)

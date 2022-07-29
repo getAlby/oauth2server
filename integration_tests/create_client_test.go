@@ -1,7 +1,11 @@
 package integrationtests
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"oauth2server/constants"
 	"oauth2server/controllers"
 	"oauth2server/models"
@@ -9,6 +13,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -63,6 +68,24 @@ func TestCreateClient(t *testing.T) {
 	reqBody.Domain = "invalid"
 	_, err = createClient(controller, &reqBody)
 	assert.Error(t, err)
+	//update the client
+	reqBody.Name = "new name"
+	var buf bytes.Buffer
+	err = json.NewEncoder(&buf).Encode(reqBody)
+	assert.NoError(t, err)
+	req, err := http.NewRequest(http.MethodPut, "/admin/clients/{clientId}", &buf)
+	req = mux.SetURLVars(req, map[string]string{
+		"clientId": resp.ClientId,
+	})
+	assert.NoError(t, err)
+	rec := httptest.NewRecorder()
+	http.HandlerFunc(controller.UpdateClientMetadataHandler).ServeHTTP(rec, req)
+	assert.Equal(t, rec.Result().StatusCode, http.StatusOK)
+	found := &models.ClientMetaData{}
+	err = svc.DB.Find(found, &models.ClientMetaData{ClientID: resp.ClientId}).Error
+	assert.NoError(t, err)
+	assert.Equal(t, "new name", found.Name)
+	assert.Equal(t, testClient.ImageUrl, found.ImageUrl)
 	err = dropTables(svc.DB, constants.ClientTableName, constants.ClientMetadataTableName, constants.TokenTableName)
 	assert.NoError(t, err)
 }
