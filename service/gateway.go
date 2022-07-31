@@ -12,7 +12,7 @@ type OriginServer struct {
 	Origin      string `json:"origin"`
 	svc         *Service
 	proxy       http.Handler
-	IsWebsocket bool   `json:"bool"`
+	IsWebsocket bool   `json:"isWebsocket"`
 	Scope       string `json:"scope"`
 	MatchRoute  string `json:"matchRoute"`
 	Description string `json:"description"`
