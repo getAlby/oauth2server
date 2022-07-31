@@ -42,6 +42,12 @@
 		"scope": "payments:send"
 	},
 	{
+		"matchRoute": "/invoices/stream",
+		"origin": "https://lndhub.regtest.getalby.com",
+		"description": "Read your invoice history, get realtime updates on invoices.",
+		"scope": "invoices:read"
+	},
+	{
 		"matchRoute": "/user/value4value",
 		"origin": "http://alby-simnet-getalbycom/api",
 		"description": "Read your payment details like the Lightning Address and keysend information.",

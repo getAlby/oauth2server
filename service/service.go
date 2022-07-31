@@ -18,6 +18,7 @@ import (
 	"github.com/go-oauth2/oauth2/v4/manage"
 	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/golang-jwt/jwt"
+	"github.com/koding/websocketproxy"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -99,7 +100,7 @@ func (svc *Service) InitGateways() (result []*OriginServer, err error) {
 		return nil, err
 	}
 	svc.Scopes = map[string]string{}
-	originHelperMap := map[string]*httputil.ReverseProxy{}
+	originHelperMap := map[string]http.Handler{}
 	for _, origin := range result {
 		origin.svc = svc
 		svc.Scopes[origin.Scope] = origin.Description
@@ -115,7 +116,12 @@ func (svc *Service) InitGateways() (result []*OriginServer, err error) {
 			if err != nil {
 				return nil, err
 			}
-			proxy := httputil.NewSingleHostReverseProxy(originUrl)
+			var proxy http.Handler
+			if origin.IsWebsocket {
+				proxy = websocketproxy.NewProxy(originUrl)
+			} else {
+				proxy = httputil.NewSingleHostReverseProxy(originUrl)
+			}
 			originHelperMap[origin.Origin] = proxy
 			origin.proxy = proxy
 		}
@@ -123,7 +129,7 @@ func (svc *Service) InitGateways() (result []*OriginServer, err error) {
 	return result, nil
 }
 
-func (svc *Service) InjectJWTAccessToken(token oauth2.TokenInfo, r *http.Request) error {
+func (svc *Service) InjectJWTAccessToken(token oauth2.TokenInfo, r *http.Request, isWebsocket bool) error {
 	//mint and inject jwt token needed for origin server
 	//the request is dispatched immediately, so the tokens can have a short expiry
 	expirySeconds := 60
@@ -132,7 +138,13 @@ func (svc *Service) InjectJWTAccessToken(token oauth2.TokenInfo, r *http.Request
 	if err != nil {
 		return err
 	}
-	//inject lndhub token in request
+	//inject lndhub token in query param if websocket
+	//inject in header otherwise
+	if isWebsocket {
+		query := r.URL.Query()
+		query.Set("token", lndhubToken)
+		r.URL.RawQuery = query.Encode()
+	}
 	r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", lndhubToken))
 	return nil
 }
