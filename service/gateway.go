@@ -26,7 +26,7 @@ func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	tokenInfo, err := origin.svc.OauthServer.Manager.LoadAccessToken(r.Context(), token)
 	if err != nil {
-		logrus.Errorf("Something went wrong loading access token: %s, token %s, request %v", err.Error(), token, r)
+		logrus.Errorf("Something went wrong loading access token: %s, token %s, request %v, origin %v", err.Error(), token, r, origin)
 		sentry.CaptureException(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, err = w.Write([]byte("Something went wrong while authenticating user."))
