@@ -24,6 +24,13 @@
 		"scope": "invoices:create"
 	},
 	{
+		"matchRoute": "/invoices/stream",
+		"origin": "ws://localhost:3000",
+		"description": "Read your invoice history, get realtime updates on invoices.",
+		"isWebsocket": true,
+		"scope": "invoices:read"
+	},
+	{
 		"matchRoute": "/invoices/{payment_hash}",
 		"origin": "http://alby-simnet-lndhub/v2",
 		"description": "Create invoices on your behalf.",
@@ -40,12 +47,6 @@
 		"origin": "http://alby-simnet-lndhub/v2",
 		"description": "Send payments from your account.",
 		"scope": "payments:send"
-	},
-	{
-		"matchRoute": "/invoices/stream",
-		"origin": "https://lndhub.regtest.getalby.com",
-		"description": "Read your invoice history, get realtime updates on invoices.",
-		"scope": "invoices:read"
 	},
 	{
 		"matchRoute": "/user/value4value",

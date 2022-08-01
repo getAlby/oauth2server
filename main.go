@@ -9,6 +9,7 @@ import (
 	"time"
 
 	prometheusmiddleware "github.com/albertogviana/prometheus-middleware"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
@@ -17,7 +18,6 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	sentryhttp "github.com/getsentry/sentry-go/http"
-	"github.com/gorilla/handlers"
 )
 
 func main() {
@@ -79,12 +79,9 @@ func main() {
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	for _, gw := range gateways {
-		r.Handle(gw.MatchRoute, gw)
-	}
+
+	prommw := prometheusmiddleware.NewPrometheusMiddleware(prometheusmiddleware.Opts{})
 	if conf.EnablePrometheus {
-		prommw := prometheusmiddleware.NewPrometheusMiddleware(prometheusmiddleware.Opts{})
-		r.Use(prommw.InstrumentHandlerDuration)
 		go func() {
 			promRouter := mux.NewRouter()
 			promRouter.Handle("/metrics", promhttp.Handler())
@@ -93,14 +90,28 @@ func main() {
 		}()
 	}
 
+	for _, gw := range gateways {
+		//hack to disable prometheus mw for websockets
+		//this middleware doesn't work with a websocket apparently
+		//todo write our own prometheus middleware so we can remove this hack
+		pmw := prommw
+		if gw.IsWebsocket {
+			pmw = nil
+		}
+		r.Handle(gw.MatchRoute, registerMiddleware(gw, conf, pmw))
+	}
+
 	logrus.Infof("Server starting on port %d", conf.Port)
-	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), registerMiddleware(r)))
+	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), r))
 }
 
 //panic recover, logging, Sentry middlewares
-func registerMiddleware(in http.Handler) http.Handler {
-	recoveryHandler := handlers.RecoveryHandler()(in)
-	loggingHandler := handlers.CombinedLoggingHandler(os.Stdout, recoveryHandler)
-	result := sentryhttp.New(sentryhttp.Options{}).Handle(loggingHandler)
-	return result
+func registerMiddleware(h http.Handler, conf *service.Config, prommw *prometheusmiddleware.PrometheusMiddleware) http.Handler {
+	h = handlers.RecoveryHandler()(h)
+	h = handlers.CombinedLoggingHandler(os.Stdout, h)
+	h = sentryhttp.New(sentryhttp.Options{}).Handle(h)
+	if prommw != nil {
+		h = prommw.InstrumentHandlerDuration(h)
+	}
+	return h
 }
