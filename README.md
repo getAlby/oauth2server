@@ -21,6 +21,7 @@ All examples are using [httpie](https://httpie.io)
 	- You will need a `client_id` and a `client_secret`. For regtest, you can use `test_client` and `test_secret`.
 	- `response_type` should always be `code`.
 	- For the possible `scope`'s, see below. These should be space-seperated (url-encoded space: `%20`).
+	- Other optional form parameters are `code_challenge` and `code_challenge_method`, to be used for pure browser-based and mobile-based apps where the confidentiality of the client secret cannot be guaranteed. See below.
 	- `$login` and `$password` should be your LNDHub login and password.
   The response should be a `302 Found` with the `Location` header equal to the redirect URL with the code in it:
 	`Location: localhost:8080/client_app?code=YOUR_CODE`
@@ -31,6 +32,7 @@ All examples are using [httpie](https://httpie.io)
 	code=YOUR_CODE
 	grant_type=authorization_code
 	redirect_uri=localhost:8080/client_app
+	code_verifier=<optional, code verifier>
 
 
 	HTTP/1.1 200 OK
@@ -43,6 +45,18 @@ All examples are using [httpie](https://httpie.io)
 	}
 	```
 	Use the client_id and the client_secret as basic authentication. Use the same redirect_uri as you used in the previous step.
+### Public clients
+Every client is always issued both a client id and a client secret. Clients that cannot hide the client secret(single page apps, mobile apps) should use the [PKCE extension](https://aaronparecki.com/oauth-2-simplified/#single-page-apps) to protect against code interception attacks.
+
+- Create a random string between 43-128 characters long, then generate the url-safe base64-encoded SHA256 hash of the string. Use the hash as the `code_challenge`, and use `S256` as `code_challenge_method` in the first request:
+
+```
+	http -f POST https://api.regtest.getalby.com/oauth/authorize\?client_id=test_client\&response_type=code\&redirect_uri=localhost:8080/client_app\&scope\=balance:read\&code_challenge=<YOUR_S256_HASH>\&code_challenge_method=S256 login=$login password=$password
+```
+- In the second request, add the initial random string as the `code_verifier` field.
+
+Optionally you can also leave `code_challenge_method` blank, in which case you don't need to use S256, and you should use the same random string for both `code_hash` and `code_verifier`.
+
 ### Scopes and endpoints:
 WIP, more to follow
 | Endpoint | Scope | Description |
