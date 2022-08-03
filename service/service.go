@@ -118,7 +118,10 @@ func (svc *Service) InitGateways() (result []*OriginServer, err error) {
 			}
 			var proxy http.Handler
 			if origin.IsWebsocket {
-				proxy = websocketproxy.NewProxy(originUrl)
+				prx := websocketproxy.NewProxy(originUrl)
+				//allow all origins
+				prx.Upgrader.CheckOrigin = func(r *http.Request) bool { return true }
+				proxy = prx
 			} else {
 				proxy = httputil.NewSingleHostReverseProxy(originUrl)
 			}
