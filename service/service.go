@@ -18,6 +18,7 @@ import (
 	"github.com/go-oauth2/oauth2/v4/manage"
 	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/golang-jwt/jwt"
+	"github.com/gorilla/websocket"
 	"github.com/koding/websocketproxy"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
@@ -120,6 +121,7 @@ func (svc *Service) InitGateways() (result []*OriginServer, err error) {
 			if origin.IsWebsocket {
 				prx := websocketproxy.NewProxy(originUrl)
 				//allow all origins
+				prx.Upgrader = &websocket.Upgrader{}
 				prx.Upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 				proxy = prx
 			} else {
