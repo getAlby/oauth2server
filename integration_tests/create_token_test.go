@@ -18,15 +18,8 @@ import (
 )
 
 func TestCreateToken(t *testing.T) {
-	svc, err := service.InitService(testConfig)
-	assert.NoError(t, err)
-	controller := &controllers.OAuthController{
-		Service: svc,
-	}
-	svc.OauthServer.SetUserAuthorizationHandler(controller.UserAuthorizeHandler)
-	svc.OauthServer.SetInternalErrorHandler(controller.InternalErrorHandler)
-	svc.OauthServer.SetAuthorizeScopeHandler(controller.AuthorizeScopeHandler)
-	_, err = svc.InitGateways()
+	svc, controller := initService(t)
+	_, err := svc.InitGateways()
 	assert.NoError(t, err)
 	cli, err := createClient(controller, &testClient)
 	assert.NoError(t, err)
@@ -48,6 +41,7 @@ func TestCreateToken(t *testing.T) {
 	assert.NoError(t, err)
 	tokenInfo, err := svc.OauthServer.Manager.LoadAccessToken(context.Background(), resp.AccessToken)
 	assert.NoError(t, err)
+	assert.NotNil(t, tokenInfo)
 	assert.Equal(t, tokenInfo.GetAccess(), resp.AccessToken)
 	assert.Equal(t, tokenInfo.GetRefresh(), resp.RefreshToken)
 	assert.Equal(t, "balance:read", resp.Scope)
