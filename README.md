@@ -46,14 +46,16 @@ All examples are using [httpie](https://httpie.io)
 	```
 	Use the client_id and the client_secret as basic authentication. Use the same redirect_uri as you used in the previous step.
 ### Public clients
-Every client is always issued both a client id and a client secret. Clients that cannot hide the client secret(single page apps, mobile apps) should use the [PKCE extension](https://aaronparecki.com/oauth-2-simplified/#single-page-apps) to protect against code interception attacks.
+Public clients are only issued a client id, no client secret. Clients that cannot hide the client secret(single page apps, mobile apps) should use the [PKCE extension](https://aaronparecki.com/oauth-2-simplified/#single-page-apps) to protect against code interception attacks.
 
 - Create a random string between 43-128 characters long, then generate the url-safe base64-encoded SHA256 hash of the string. Use the hash as the `code_challenge`, and use `S256` as `code_challenge_method` in the first request:
 
 ```
 	http -f POST https://api.regtest.getalby.com/oauth/authorize\?client_id=test_client\&response_type=code\&redirect_uri=localhost:8080/client_app\&scope\=balance:read\&code_challenge=<YOUR_S256_HASH>\&code_challenge_method=S256 login=$login password=$password
 ```
-- In the second request, add the initial random string as the `code_verifier` field.
+- In the second request:
+	- Add the initial random string as the `code_verifier` field.
+	- Still use http basic authentication with the client id as the username, but use an empty string as the password.
 
 Optionally you can also leave `code_challenge_method` blank, in which case you don't need to use S256, and you should use the same random string for both `code_hash` and `code_verifier`.
 
