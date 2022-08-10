@@ -20,6 +20,7 @@ type CreateClientRequest struct {
 	Name     string `json:"name" validate:"required"`
 	ImageUrl string `json:"imageUrl"`
 	URL      string `json:"url,omitempty"`
+	Public   bool   `json:"public"`
 }
 
 type ClientMetaData struct {

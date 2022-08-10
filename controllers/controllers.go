@@ -332,7 +332,10 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 		return
 	}
 	id := random.New().String(constants.ClientIdLength)
-	secret := random.New().String(constants.ClientSecretLength)
+	var secret string
+	if !req.Public {
+		secret = random.New().String(constants.ClientSecretLength)
+	}
 
 	err = ctrl.Service.ClientStore.Create(r.Context(), &mdls.Client{
 		ID:     id,
