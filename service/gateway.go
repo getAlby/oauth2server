@@ -1,12 +1,21 @@
 package service
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
 	"github.com/getsentry/sentry-go"
+	"github.com/go-oauth2/oauth2/v4/errors"
 	"github.com/sirupsen/logrus"
 )
+
+var errorResponses = map[string]int{
+	errors.ErrExpiredAccessToken.Error():  http.StatusUnauthorized,
+	errors.ErrExpiredRefreshToken.Error(): http.StatusUnauthorized,
+	errors.ErrInvalidAccessToken.Error():  http.StatusUnauthorized,
+	errors.ErrInvalidRefreshToken.Error(): http.StatusUnauthorized,
+}
 
 type OriginServer struct {
 	Origin      string `json:"origin"`
@@ -26,12 +35,12 @@ func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	tokenInfo, err := origin.svc.OauthServer.Manager.LoadAccessToken(r.Context(), token)
 	if err != nil {
-		logrus.Errorf("Something went wrong loading access token: %s, token %s, request %v, origin %v", err.Error(), token, r, origin)
-		sentry.CaptureException(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte("Something went wrong while authenticating user."))
-		if err != nil {
-			logrus.Error(err)
+		if status, found := errorResponses[err.Error()]; found {
+			writeErrorResponse(w, err.Error(), status)
+		} else {
+			logrus.Errorf("Something went wrong loading access token: %s, token %s, request %v, origin %v", err.Error(), token, r, origin)
+			sentry.CaptureException(err)
+			writeErrorResponse(w, "Something went wrong while authenticating user.", http.StatusInternalServerError)
 		}
 		return
 	}
@@ -44,11 +53,7 @@ func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !allowed {
-		w.WriteHeader(http.StatusUnauthorized)
-		_, err = w.Write([]byte("Token does not have the right scope for operation"))
-		if err != nil {
-			logrus.Error(err)
-		}
+		writeErrorResponse(w, "Token does not have the right scope for operation", http.StatusUnauthorized)
 		return
 	}
 
@@ -56,12 +61,20 @@ func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logrus.Errorf("Something went wrong generating lndhub token: %s", err.Error())
 		sentry.CaptureException(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte("Something went wrong while authenticating user."))
-		if err != nil {
-			logrus.Error(err)
-		}
+		writeErrorResponse(w, "Something went wrong while authenticating user", http.StatusInternalServerError)
 		return
 	}
 	origin.proxy.ServeHTTP(w, r)
+}
+
+func writeErrorResponse(w http.ResponseWriter, msg string, status int) {
+	w.Header().Add("Content-type", "application/json")
+	w.WriteHeader(status)
+	err := json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": status,
+		"error":  msg,
+	})
+	if err != nil {
+		logrus.Error(err)
+	}
 }
