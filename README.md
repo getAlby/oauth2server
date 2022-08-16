@@ -59,8 +59,8 @@ Public clients are only issued a client id, no client secret. Clients that canno
 
 Optionally you can also leave `code_challenge_method` blank, in which case you don't need to use S256, and you should use the same random string for both `code_hash` and `code_verifier`.
 
-### Scopes and endpoints:
-WIP, more to follow
+### Example scopes and endpoints:
+Based on the configuration of the instance run in production by Alby
 | Endpoint | Scope | Description |
 |----------|-------|-------------|
 | POST `/invoices`  | `invoices:create`  | Create invoices |
@@ -77,13 +77,10 @@ WIP, more to follow
 	```
 
 To do:
-- more scopes
-- websocket proxy
 - budget feature
 
 ## Admin API
-
-There is no authentication here, so the `/admin/..` route should not be accesible from outside a trusted network.
+There is currently no authentication here, so the `/admin/..` routes should not be accesible from outside a trusted network.
 
 | Endpoint | Response Fields | Description |
 |----------|-------|-------------|
