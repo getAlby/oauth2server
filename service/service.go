@@ -33,6 +33,14 @@ type Service struct {
 	Scopes      map[string]string
 }
 
+func CombinedClientInfoHandler(r *http.Request) (clientID, clientSecret string, err error) {
+	clientID, clientSecret, err = server.ClientBasicHandler(r)
+	if err != nil {
+		return server.ClientFormHandler(r)
+	}
+	return
+}
+
 func InitService(conf *Config) (svc *Service, err error) {
 	manager := manage.NewDefaultManager()
 	manager.SetAuthorizeCodeTokenCfg(manage.DefaultAuthorizeCodeTokenCfg)
@@ -53,6 +61,7 @@ func InitService(conf *Config) (svc *Service, err error) {
 	})
 
 	srv := server.NewServer(server.NewConfig(), manager)
+	srv.ClientInfoHandler = CombinedClientInfoHandler
 	svc = &Service{
 		DB:          db,
 		OauthServer: srv,
