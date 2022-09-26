@@ -19,6 +19,7 @@ import (
 	"github.com/getsentry/sentry-go"
 	oauthErrors "github.com/go-oauth2/oauth2/errors"
 	"github.com/go-oauth2/oauth2/v4/errors"
+	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
 	"github.com/labstack/gommon/random"
@@ -376,6 +377,12 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 	if err != nil {
 		logrus.Error(err)
 	}
+}
+
+func (ctrl *OAuthController) PreRedirectErrorHandler(w http.ResponseWriter, r *server.AuthorizeRequest, err error) error {
+	logrus.WithField("Authorize request", r).Error(err)
+	sentry.CaptureException(err)
+	return nil
 }
 
 func (ctrl *OAuthController) AuthorizeScopeHandler(w http.ResponseWriter, r *http.Request) (scope string, err error) {
