@@ -192,7 +192,7 @@ func (ctrl *OAuthController) ListClientHandler(w http.ResponseWriter, r *http.Re
 	}
 }
 
-//should be used for budgets later
+// should be used for budgets later
 func (ctrl *OAuthController) UpdateClientHandler(w http.ResponseWriter, r *http.Request) {
 }
 
@@ -251,7 +251,7 @@ func (ctrl *OAuthController) UpdateClientMetadataHandler(w http.ResponseWriter, 
 	}
 }
 
-//deletes all tokens a user currently has for a given client
+// deletes all tokens a user currently has for a given client
 func (ctrl *OAuthController) DeleteClientHandler(w http.ResponseWriter, r *http.Request) {
 	clientId := mux.Vars(r)["clientId"]
 	err := ctrl.Service.DB.Table(constants.TokenTableName).Delete(&oauth2gorm.TokenStoreItem{}, &oauth2gorm.TokenStoreItem{ClientID: clientId}).Error
@@ -382,7 +382,7 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 func (ctrl *OAuthController) PreRedirectErrorHandler(w http.ResponseWriter, r *server.AuthorizeRequest, err error) error {
 	logrus.WithField("Authorize request", r).Error(err)
 	sentry.CaptureException(err)
-	return nil
+	return err
 }
 
 func (ctrl *OAuthController) AuthorizeScopeHandler(w http.ResponseWriter, r *http.Request) (scope string, err error) {
