@@ -27,6 +27,7 @@ import (
 
 type Service struct {
 	OauthServer *server.Server
+	Endpoints   []*OriginServer
 	Config      *Config
 	ClientStore *oauth2gorm.ClientStore
 	DB          *gorm.DB
@@ -109,6 +110,7 @@ func (svc *Service) InitGateways() (result []*OriginServer, err error) {
 	if err != nil {
 		return nil, err
 	}
+	svc.Endpoints = result
 	svc.Scopes = map[string]string{}
 	originHelperMap := map[string]http.Handler{}
 	for _, origin := range result {

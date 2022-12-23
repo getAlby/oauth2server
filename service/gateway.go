@@ -19,7 +19,7 @@ var errorResponses = map[string]int{
 }
 
 type OriginServer struct {
-	Origin      string `json:"origin"`
+	Origin      string `json:"origin,omitempty"`
 	svc         *Service
 	proxy       http.Handler
 	IsWebsocket bool   `json:"isWebsocket"`

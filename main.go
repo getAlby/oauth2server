@@ -64,6 +64,7 @@ func main() {
 	oauthRouter.HandleFunc("/oauth/authorize", controller.AuthorizationHandler)
 	oauthRouter.HandleFunc("/oauth/token", controller.TokenHandler)
 	oauthRouter.HandleFunc("/oauth/scopes", controller.ScopeHandler)
+	oauthRouter.HandleFunc("/oauth/endpoints", controller.EndpointHandler)
 
 	//these routes should not be publicly accesible
 	oauthRouter.HandleFunc("/admin/clients", controller.CreateClientHandler).Methods(http.MethodPost)
@@ -115,7 +116,7 @@ func main() {
 	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), r))
 }
 
-//panic recover, logging, Sentry middlewares
+// panic recover, logging, Sentry middlewares
 func registerMiddleware(h http.Handler, conf *service.Config, prommw *prometheusmiddleware.PrometheusMiddleware) http.Handler {
 	h = handlers.RecoveryHandler()(h)
 	h = handlers.CombinedLoggingHandler(os.Stdout, h)

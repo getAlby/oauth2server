@@ -50,6 +50,19 @@ func (ctrl *OAuthController) ScopeHandler(w http.ResponseWriter, r *http.Request
 	}
 }
 
+func (ctrl *OAuthController) EndpointHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Add("Content-type", "application/json")
+	endpoints := ctrl.Service.Endpoints
+	//not needed for clients
+	for _, e := range endpoints {
+		e.Origin = ""
+	}
+	err := json.NewEncoder(w).Encode(endpoints)
+	if err != nil {
+		logrus.Error(err)
+	}
+}
+
 func (ctrl *OAuthController) TokenHandler(w http.ResponseWriter, r *http.Request) {
 	err := ctrl.Service.OauthServer.HandleTokenRequest(w, r)
 	if err != nil {
