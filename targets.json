@@ -1,7 +1,7 @@
 [
 	{
 		"matchRoute": "/balance",
-		"origin": "http://alby-simnet-lndhub/v2",
+		"origin": "http://localhost:3000",
 		"description": "Read your balance.",
 		"scope": "balance:read"
 	},
@@ -19,7 +19,7 @@
 	},
 	{
 		"matchRoute": "/invoices",
-		"origin": "http://alby-simnet-lndhub/v2",
+		"origin": "http://localhost:3000/v2",
 		"description": "Create invoices on your behalf.",
 		"scope": "invoices:create"
 	},
@@ -32,19 +32,19 @@
 	},
 	{
 		"matchRoute": "/invoices/{payment_hash}",
-		"origin": "http://alby-simnet-lndhub/v2",
+		"origin": "http://localhost:3000/v2",
 		"description": "Create invoices on your behalf.",
 		"scope": "invoices:create"
 	},
 	{
 		"matchRoute": "/payments/bolt11",
-		"origin": "http://alby-simnet-lndhub/v2",
+		"origin": "http://localhost:3000/v2",
 		"description": "Send payments from your account.",
 		"scope": "payments:send"
 	},
 	{
 		"matchRoute": "/payments/keysend",
-		"origin": "http://alby-simnet-lndhub/v2",
+		"origin": "http://localhost:3000",
 		"description": "Send payments from your account.",
 		"scope": "payments:send"
 	},
