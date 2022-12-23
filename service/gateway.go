@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -53,7 +54,7 @@ func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if !allowed {
-		writeErrorResponse(w, "Token does not have the right scope for operation", http.StatusUnauthorized)
+		writeErrorResponse(w, fmt.Sprintf("Token does not have the right scope for operation: token scope %s, endpoint scope %s", tokenInfo.GetScope(), origin.Scope), http.StatusUnauthorized)
 		return
 	}
 
