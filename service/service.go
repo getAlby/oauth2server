@@ -61,6 +61,16 @@ func InitService(conf *Config) (svc *Service, err error) {
 		IsGenerateRefresh: true,
 	})
 
+	//use the default refresh config but add the reset refresh time = true
+	//otherwise refreshing will always break after the token birthday + refresh token exiry
+	manager.SetRefreshTokenCfg(
+		&manage.RefreshingConfig{
+			IsGenerateRefresh:  true,
+			IsRemoveAccess:     true,
+			IsRemoveRefreshing: true,
+			IsResetRefreshTime: true,
+		})
+
 	srv := server.NewServer(server.NewConfig(), manager)
 	srv.ClientInfoHandler = CombinedClientInfoHandler
 	svc = &Service{
