@@ -82,9 +82,9 @@ To do:
 ## Admin API
 There is currently no authentication here, so the `/admin/..` routes should not be accesible from outside a trusted network.
 
-| Endpoint | Response Fields | Description |
-|----------|-------|-------------|
-| GET `/admin/clients`  | (array) id, imageUrl, name, url  | Get all registered clients |
-| GET `/admin/clients/{clientId}`  | id, imageUrl, name, url | Get a specific client by client id|
-| POST `/admin/clients`  | clientId, clientSecret, name, imageUrl, url | Create a new client|
-| PUT `/admin/clients/{clientId}`  | id, name, imageUrl, url  | Update the metadata of an existing client|
+| Endpoint | Request Fields | Response Fields | Description |
+|----------|-----------------|-------|-------------|
+| GET `/admin/clients`  | |(array) id, imageUrl, name, url  | Get all registered clients |
+| GET `/admin/clients/{clientId}`  | |id, imageUrl, name, url | Get a specific client by client id|
+| POST `/admin/clients`  | name, url (=landing page), domain (= app callback), imageUrl, public (boolean, if true then no client secret will be created) | clientId, clientSecret, name, imageUrl, url | Create a new client|
+| PUT `/admin/clients/{clientId}`  |name, imageUrl, url |id, name, imageUrl, url  | Update the metadata of an existing client|
