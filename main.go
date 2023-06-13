@@ -37,7 +37,6 @@ func main() {
 	if conf.SentryDSN != "" {
 		if err = sentry.Init(sentry.ClientOptions{
 			Dsn:          conf.SentryDSN,
-			IgnoreErrors: []string{"401"},
 		}); err != nil {
 			logrus.Errorf("sentry init error: %v", err)
 		}
