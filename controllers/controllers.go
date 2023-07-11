@@ -355,6 +355,7 @@ func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.
 		ID:     id,
 		Secret: secret,
 		Domain: req.Domain,
+		UserID: req.UserID,
 	})
 	if err != nil {
 		logrus.Errorf("Error storing client info %s", err.Error())
