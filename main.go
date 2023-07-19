@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"oauth2server/controllers"
 	"oauth2server/service"
-	"os"
 	"time"
 
 	prometheusmiddleware "github.com/albertogviana/prometheus-middleware"
@@ -74,7 +73,7 @@ func main() {
 	oauthRouter.HandleFunc("/admin/clients/{clientId}", controller.UpdateClientMetadataHandler).Methods(http.MethodPut)
 	oauthRouter.Use(
 		handlers.RecoveryHandler(),
-		func(h http.Handler) http.Handler { return handlers.CombinedLoggingHandler(os.Stdout, h) },
+		func(h http.Handler) http.Handler { return loggingMiddleware(h) },
 		prommw.InstrumentHandlerDuration)
 
 	//manages connected apps for users
@@ -84,7 +83,7 @@ func main() {
 	userControlledRouter.HandleFunc("/clients/{clientId}", controller.DeleteClientHandler).Methods(http.MethodDelete)
 	userControlledRouter.Use(controller.UserAuthorizeMiddleware)
 	userControlledRouter.Use(handlers.RecoveryHandler(),
-		func(h http.Handler) http.Handler { return handlers.CombinedLoggingHandler(os.Stdout, h) },
+		func(h http.Handler) http.Handler { return loggingMiddleware(h) },
 		prommw.InstrumentHandlerDuration)
 
 	//Initialize API gateway
