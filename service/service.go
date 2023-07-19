@@ -46,7 +46,7 @@ func InitService(conf *Config) (svc *Service, err error) {
 	manager := manage.NewDefaultManager()
 	manager.SetAuthorizeCodeTokenCfg(manage.DefaultAuthorizeCodeTokenCfg)
 
-	clientStore, tokenStore, db, err := initStores(conf.DatabaseUri)
+	clientStore, tokenStore, db, err := initStores(conf.DatabaseUri, conf)
 	if err != nil {
 		logrus.Fatalf("Error connecting db: %s", err.Error())
 	}
@@ -82,12 +82,22 @@ func InitService(conf *Config) (svc *Service, err error) {
 	return svc, nil
 }
 
-func initStores(dsn string) (clientStore *oauth2gorm.ClientStore, tokenStore *oauth2gorm.TokenStore, db *gorm.DB, err error) {
+func initStores(dsn string, cfg *Config) (clientStore *oauth2gorm.ClientStore, tokenStore *oauth2gorm.TokenStore, db *gorm.DB, err error) {
 	//connect database
 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, nil, nil, err
 	}
+
+	//set database config
+	sqlDb, err := db.DB()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	sqlDb.SetMaxOpenConns(cfg.DatabaseMaxConns)
+	sqlDb.SetMaxIdleConns(cfg.DatabaseMaxIdleConns)
+	sqlDb.SetConnMaxLifetime(time.Duration(cfg.DatabaseConnMaxLifetime) * time.Second)
+
 	//migrated from legacy tables
 	err = db.Table(constants.ClientTableName).AutoMigrate(&oauth2gorm.ClientStoreItem{})
 	if err != nil {
