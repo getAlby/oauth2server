@@ -9,6 +9,7 @@ import (
 	"time"
 
 	prometheusmiddleware "github.com/albertogviana/prometheus-middleware"
+	"github.com/felixge/httpsnoop"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -32,7 +33,7 @@ func main() {
 	if err != nil {
 		logrus.Fatalf("Error loading environment variables: %v", err)
 	}
-	logrus.SetReportCaller(true)
+	logrus.SetFormatter(&logrus.JSONFormatter{})
 
 	// Setup exception tracking with Sentry if configured
 	if conf.SentryDSN != "" {
@@ -119,10 +120,29 @@ func main() {
 // panic recover, logging, Sentry middlewares
 func registerMiddleware(h http.Handler, conf *service.Config, prommw *prometheusmiddleware.PrometheusMiddleware) http.Handler {
 	h = handlers.RecoveryHandler()(h)
-	h = handlers.CombinedLoggingHandler(os.Stdout, h)
+	h = loggingMiddleware(h)
 	h = sentryhttp.New(sentryhttp.Options{}).Handle(h)
 	if prommw != nil {
 		h = prommw.InstrumentHandlerDuration(h)
 	}
 	return h
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Call the next handler, which can be another middleware in the chain, or the final handler.
+		entry := logrus.NewEntry(logrus.StandardLogger())
+		entry = entry.WithField("host", r.Host)
+		entry = entry.WithField("id", r.Header.Get("X-Request-Id"))
+		entry = entry.WithField("remote_ip", r.Header.Get("X-Forwarded-For"))
+		entry = entry.WithField("referer", r.Referer())
+		entry = entry.WithField("user_agent", r.UserAgent())
+		entry = entry.WithField("uri", r.URL.Path)
+		//this already calls next.ServeHttp
+		m := httpsnoop.CaptureMetrics(next, w, r)
+		entry = entry.WithField("latency", m.Duration.Seconds())
+		entry = entry.WithField("status", m.Code)
+		entry = entry.WithField("bytes_out", m.Written)
+		entry.Info()
+	})
 }
