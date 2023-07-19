@@ -9,8 +9,6 @@ type Config struct {
 	SentryDSN               string `envconfig:"SENTRY_DSN"`
 	AccessTokenExpSeconds   int    `envconfig:"ACCESS_EXPIRY_SECONDS" default:"7200"`     //default 2 hours
 	RefreshTokenExpSeconds  int    `envconfig:"REFRESH_EXPIRY_SECONDS" default:"2592000"` //default 30 days
-	EnablePrometheus        bool   `envconfig:"ENABLE_PROMETHEUS" default:"false"`
-	PrometheusPort          int    `envconfig:"PROMETHEUS_PORT" default:"9092"`
 	DatabaseMaxConns        int    `envconfig:"DATABASE_MAX_CONNS" default:"10"`
 	DatabaseMaxIdleConns    int    `envconfig:"DATABASE_MAX_IDLE_CONNS" default:"5"`
 	DatabaseConnMaxLifetime int    `envconfig:"DATABASE_CONN_MAX_LIFETIME" default:"1800"` // 30 minutes

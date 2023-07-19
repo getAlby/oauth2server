@@ -8,13 +8,11 @@ import (
 	"strings"
 	"time"
 
-	prometheusmiddleware "github.com/albertogviana/prometheus-middleware"
 	"github.com/felixge/httpsnoop"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 
 	"github.com/getsentry/sentry-go"
@@ -58,7 +56,6 @@ func main() {
 	svc.OauthServer.SetAuthorizeScopeHandler(controller.AuthorizeScopeHandler)
 	svc.OauthServer.SetPreRedirectErrorHandler(controller.PreRedirectErrorHandler)
 
-	prommw := prometheusmiddleware.NewPrometheusMiddleware(prometheusmiddleware.Opts{})
 	r := mux.NewRouter()
 
 	oauthRouter := r.NewRoute().Subrouter()
@@ -75,7 +72,7 @@ func main() {
 	oauthRouter.Use(
 		handlers.RecoveryHandler(),
 		func(h http.Handler) http.Handler { return loggingMiddleware(h) },
-		prommw.InstrumentHandlerDuration)
+	)
 
 	//manages connected apps for users
 	userControlledRouter := r.Methods(http.MethodGet, http.MethodPost, http.MethodDelete).Subrouter()
@@ -85,7 +82,7 @@ func main() {
 	userControlledRouter.Use(controller.UserAuthorizeMiddleware)
 	userControlledRouter.Use(handlers.RecoveryHandler(),
 		func(h http.Handler) http.Handler { return loggingMiddleware(h) },
-		prommw.InstrumentHandlerDuration)
+	)
 
 	//Initialize API gateway
 	gateways, err := svc.InitGateways()
@@ -93,24 +90,8 @@ func main() {
 		logrus.Fatal(err)
 	}
 
-	if conf.EnablePrometheus {
-		go func() {
-			promRouter := mux.NewRouter()
-			promRouter.Handle("/metrics", promhttp.Handler())
-			logrus.Infof("Prometheus server starting on port %d", conf.PrometheusPort)
-			logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.PrometheusPort), promRouter))
-		}()
-	}
-
 	for _, gw := range gateways {
-		//hack to disable prometheus mw for websockets
-		//this middleware doesn't work with a websocket apparently
-		//todo write our own prometheus middleware so we can remove this hack
-		pmw := prommw
-		if gw.IsWebsocket {
-			pmw = nil
-		}
-		r.Handle(gw.MatchRoute, registerMiddleware(gw, conf, pmw))
+		r.Handle(gw.MatchRoute, registerMiddleware(gw, conf))
 	}
 
 	logrus.Infof("Server starting on port %d", conf.Port)
@@ -118,13 +99,10 @@ func main() {
 }
 
 // panic recover, logging, Sentry middlewares
-func registerMiddleware(h http.Handler, conf *service.Config, prommw *prometheusmiddleware.PrometheusMiddleware) http.Handler {
+func registerMiddleware(h http.Handler, conf *service.Config) http.Handler {
 	h = handlers.RecoveryHandler()(h)
 	h = loggingMiddleware(h)
 	h = sentryhttp.New(sentryhttp.Options{}).Handle(h)
-	if prommw != nil {
-		h = prommw.InstrumentHandlerDuration(h)
-	}
 	return h
 }
 

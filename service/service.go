@@ -18,8 +18,6 @@ import (
 	"github.com/go-oauth2/oauth2/v4/manage"
 	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/golang-jwt/jwt"
-	"github.com/gorilla/websocket"
-	"github.com/koding/websocketproxy"
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -148,16 +146,7 @@ func (svc *Service) InitGateways() (result []*OriginServer, err error) {
 			if err != nil {
 				return nil, err
 			}
-			var proxy http.Handler
-			if origin.IsWebsocket {
-				prx := websocketproxy.NewProxy(originUrl)
-				//allow all origins
-				prx.Upgrader = &websocket.Upgrader{}
-				prx.Upgrader.CheckOrigin = func(r *http.Request) bool { return true }
-				proxy = prx
-			} else {
-				proxy = httputil.NewSingleHostReverseProxy(originUrl)
-			}
+			proxy := httputil.NewSingleHostReverseProxy(originUrl)
 			originHelperMap[origin.Origin] = proxy
 			origin.proxy = proxy
 		}
@@ -165,7 +154,7 @@ func (svc *Service) InitGateways() (result []*OriginServer, err error) {
 	return result, nil
 }
 
-func (svc *Service) InjectJWTAccessToken(token oauth2.TokenInfo, r *http.Request, isWebsocket bool) error {
+func (svc *Service) InjectJWTAccessToken(token oauth2.TokenInfo, r *http.Request) error {
 	//mint and inject jwt token needed for origin server
 	//the request is dispatched immediately, so the tokens can have a short expiry
 	expirySeconds := 60
@@ -173,13 +162,6 @@ func (svc *Service) InjectJWTAccessToken(token oauth2.TokenInfo, r *http.Request
 	lndhubToken, err := GenerateLNDHubAccessToken(svc.Config.JWTSecret, expirySeconds, lndhubId)
 	if err != nil {
 		return err
-	}
-	//inject lndhub token in query param if websocket
-	//inject in header otherwise
-	if isWebsocket {
-		query := r.URL.Query()
-		query.Set("token", lndhubToken)
-		r.URL.RawQuery = query.Encode()
 	}
 	r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", lndhubToken))
 	return nil
