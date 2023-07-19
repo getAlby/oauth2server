@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"oauth2server/controllers"
 	"oauth2server/service"
+	"strings"
 	"time"
 
 	prometheusmiddleware "github.com/albertogviana/prometheus-middleware"
@@ -133,7 +134,10 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		entry := logrus.NewEntry(logrus.StandardLogger())
 		entry = entry.WithField("host", r.Host)
 		entry = entry.WithField("id", r.Header.Get("X-Request-Id"))
-		entry = entry.WithField("remote_ip", r.Header.Get("X-Forwarded-For"))
+		remoteIpList := strings.Split(r.Header.Get("X-Forwarded-For"), ",")
+		if len(remoteIpList) > 0 {
+			entry = entry.WithField("remote_ip", remoteIpList[0])
+		}
 		entry = entry.WithField("referer", r.Referer())
 		entry = entry.WithField("user_agent", r.UserAgent())
 		entry = entry.WithField("uri", r.URL.Path)
