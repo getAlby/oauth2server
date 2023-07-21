@@ -22,7 +22,6 @@ type OriginServer struct {
 	Origin      string `json:"origin,omitempty"`
 	svc         *Service
 	proxy       http.Handler
-	IsWebsocket bool   `json:"isWebsocket"`
 	Scope       string `json:"scope"`
 	MatchRoute  string `json:"matchRoute"`
 	Description string `json:"description"`
@@ -31,9 +30,6 @@ type OriginServer struct {
 func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	//check authorization
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-	if origin.IsWebsocket {
-		token = r.URL.Query().Get("token")
-	}
 	tokenInfo, err := origin.svc.OauthServer.Manager.LoadAccessToken(r.Context(), token)
 	if err != nil {
 		if status, found := errorResponses[err.Error()]; found {
@@ -58,7 +54,7 @@ func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = origin.svc.InjectJWTAccessToken(tokenInfo, r, origin.IsWebsocket)
+	err = origin.svc.InjectJWTAccessToken(tokenInfo, r)
 	if err != nil {
 		logrus.Errorf("Something went wrong generating lndhub token: %s", err.Error())
 		sentry.CaptureException(err)

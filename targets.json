@@ -27,7 +27,6 @@
 		"matchRoute": "/invoices/stream",
 		"origin": "ws://localhost:3000",
 		"description": "Read your invoice history, get realtime updates on invoices.",
-		"isWebsocket": true,
 		"scope": "invoices:read"
 	},
 	{
