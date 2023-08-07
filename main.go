@@ -116,8 +116,11 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		if len(remoteIpList) > 0 {
 			entry = entry.WithField("remote_ip", remoteIpList[0])
 		}
+		entry = entry.WithField("connecting_ip", r.Header.Get("CF-Connecting-IP"))
+		entry = entry.WithField("country_code", r.Header.Get("CF-IPCountry"))
 		entry = entry.WithField("referer", r.Referer())
 		entry = entry.WithField("user_agent", r.UserAgent())
+		entry = entry.WithField("x_user_agent", r.Header.Get("X-User-Agent"))
 		entry = entry.WithField("uri", r.URL.Path)
 		//this already calls next.ServeHttp
 		m := httpsnoop.CaptureMetrics(next, w, r)
