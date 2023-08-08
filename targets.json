@@ -24,12 +24,6 @@
 		"scope": "invoices:create"
 	},
 	{
-		"matchRoute": "/invoices/stream",
-		"origin": "ws://localhost:3000",
-		"description": "Read your invoice history, get realtime updates on invoices.",
-		"scope": "invoices:read"
-	},
-	{
 		"matchRoute": "/invoices/{payment_hash}",
 		"origin": "http://localhost:3000/v2",
 		"description": "Create invoices on your behalf.",
