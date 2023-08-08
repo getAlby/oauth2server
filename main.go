@@ -14,6 +14,8 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
+	muxtrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/gorilla/mux"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/getsentry/sentry-go"
 	sentryhttp "github.com/getsentry/sentry-go/http"
@@ -56,7 +58,16 @@ func main() {
 	svc.OauthServer.SetAuthorizeScopeHandler(controller.AuthorizeScopeHandler)
 	svc.OauthServer.SetPreRedirectErrorHandler(controller.PreRedirectErrorHandler)
 
-	r := mux.NewRouter()
+	var r *muxtrace.Router
+	if conf.DatadogAgentUrl != "" {
+		tracer.Start(tracer.WithAgentAddr(conf.DatadogAgentUrl))
+		defer tracer.Stop()
+		r = muxtrace.NewRouter(muxtrace.WithServiceName("oauth2server"))
+	} else {
+		r = &muxtrace.Router{
+			Router: mux.NewRouter(),
+		}
+	}
 
 	oauthRouter := r.NewRoute().Subrouter()
 	oauthRouter.HandleFunc("/oauth/authorize", controller.AuthorizationHandler)
