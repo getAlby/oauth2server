@@ -63,8 +63,52 @@ func (ctrl *OAuthController) EndpointHandler(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+func (ctrl *OAuthController) tokenError(w http.ResponseWriter, err error) error {
+	data, statusCode, header := ctrl.Service.OauthServer.GetErrorData(err)
+	logrus.Errorf("%s: %s", data["error_description"], data["error"])
+	sentry.CaptureException(err)
+	return ctrl.token(w, data, header, statusCode)
+}
+
+func (ctrl *OAuthController) token(w http.ResponseWriter, data map[string]interface{}, header http.Header, statusCode ...int) error {
+	if fn := ctrl.Service.OauthServer.ResponseTokenHandler; fn != nil {
+		return fn(w, data, header, statusCode...)
+	}
+	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
+
+	for key := range header {
+		w.Header().Set(key, header.Get(key))
+	}
+
+	status := http.StatusOK
+	if len(statusCode) > 0 && statusCode[0] > 0 {
+		status = statusCode[0]
+	}
+
+	w.WriteHeader(status)
+	return json.NewEncoder(w).Encode(data)
+}
+
+func (ctrl *OAuthController) HandleTokenRequest(w http.ResponseWriter, r *http.Request) error {
+	ctx := r.Context()
+
+	gt, tgr, err := ctrl.Service.OauthServer.ValidationTokenRequest(r)
+	if err != nil {
+		return ctrl.tokenError(w, err)
+	}
+
+	ti, err := ctrl.Service.OauthServer.GetAccessToken(ctx, gt, tgr)
+	if err != nil {
+		return ctrl.tokenError(w, err)
+	}
+
+	return ctrl.token(w, ctrl.Service.OauthServer.GetTokenData(ti), nil)
+}
+
 func (ctrl *OAuthController) TokenHandler(w http.ResponseWriter, r *http.Request) {
-	err := ctrl.Service.OauthServer.HandleTokenRequest(w, r)
+	err := ctrl.HandleTokenRequest(w, r)
 	if err != nil {
 		sentry.CaptureException(err)
 	}
@@ -96,6 +140,7 @@ func (ctrl *OAuthController) InternalErrorHandler(err error) (re *errors.Respons
 func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http.Request) (userID string, err error) {
 	token, err := ctrl.authenticateUser(r)
 	if err != nil {
+		logrus.Error(err)
 		sentry.CaptureException(err)
 		return "", err
 	}
