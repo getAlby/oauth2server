@@ -116,6 +116,15 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		if len(remoteIpList) > 0 {
 			entry = entry.WithField("remote_ip", remoteIpList[0])
 		}
+		var clientId string
+		if r.FormValue("client_id") != "" {
+			clientId = r.FormValue("client_id")
+		} else if mux.Vars(r)["clientId"] != "" {
+			clientId = mux.Vars(r)["clientId"]
+		}
+		if clientId != "" {
+			entry = entry.WithField("client_id", clientId)
+		}
 		entry = entry.WithField("connecting_ip", r.Header.Get("CF-Connecting-IP"))
 		entry = entry.WithField("country_code", r.Header.Get("CF-IPCountry"))
 		entry = entry.WithField("referer", r.Referer())
