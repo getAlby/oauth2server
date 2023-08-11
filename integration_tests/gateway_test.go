@@ -1,7 +1,6 @@
 package integrationtests
 
 import (
-	"context"
 	"encoding/json"
 	"net"
 	"net/http"
@@ -9,7 +8,6 @@ import (
 	"net/url"
 	"oauth2server/constants"
 	"oauth2server/middleware"
-	"oauth2server/models"
 	"strings"
 	"testing"
 
@@ -52,15 +50,13 @@ func TestGateway(t *testing.T) {
 	assert.NoError(t, err)
 	//make API request
 	req, err := http.NewRequest(http.MethodGet, "/balance", nil)
-	u := &models.LogTokenInfo{}
-	req = req.WithContext(context.WithValue(req.Context(), "token_info", u))
 	req.Header.Set("Authorization", resp.AccessToken)
 	assert.NoError(t, err)
 	rec = httptest.NewRecorder()
 	//wrap gateway with middleware
-	gw := middleware.RegisterMiddleware(gateways[0], svc.Config)
+	gw1 := middleware.RegisterMiddleware(gateways[0], svc.Config)
 	//we're not testing the gateway selection logic at the moment
-	gw.ServeHTTP(rec, req)
+	gw1.ServeHTTP(rec, req)
 	//assert that we get a response from the right backend
 	assert.Equal(t, originServerMsg, rec.Body.String())
 	//check backend server that we got a jwt token
@@ -82,7 +78,9 @@ func TestGateway(t *testing.T) {
 	req.Header.Set("Authorization", resp.AccessToken)
 	assert.NoError(t, err)
 	rec = httptest.NewRecorder()
-	gateways[1].ServeHTTP(rec, req)
+	//wrap gateway with mw
+	gw2 := middleware.RegisterMiddleware(gateways[0], svc.Config)
+	gw2.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusUnauthorized, rec.Result().StatusCode)
 
 	err = dropTables(svc.DB, constants.ClientTableName, constants.ClientMetadataTableName, constants.TokenTableName)
