@@ -79,7 +79,7 @@ func TestGateway(t *testing.T) {
 	assert.NoError(t, err)
 	rec = httptest.NewRecorder()
 	//wrap gateway with mw
-	gw2 := middleware.RegisterMiddleware(gateways[0], svc.Config)
+	gw2 := middleware.RegisterMiddleware(gateways[1], svc.Config)
 	gw2.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusUnauthorized, rec.Result().StatusCode)
 
