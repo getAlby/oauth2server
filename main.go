@@ -1,16 +1,13 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 	"oauth2server/controllers"
-	"oauth2server/models"
+	"oauth2server/middleware"
 	"oauth2server/service"
-	"strings"
 	"time"
 
-	"github.com/felixge/httpsnoop"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -18,7 +15,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/getsentry/sentry-go"
-	sentryhttp "github.com/getsentry/sentry-go/http"
 )
 
 func main() {
@@ -73,7 +69,7 @@ func main() {
 	oauthRouter.HandleFunc("/admin/clients/{clientId}", controller.UpdateClientMetadataHandler).Methods(http.MethodPut)
 	oauthRouter.Use(
 		handlers.RecoveryHandler(),
-		func(h http.Handler) http.Handler { return loggingMiddleware(h) },
+		func(h http.Handler) http.Handler { return middleware.LoggingMiddleware(h) },
 	)
 
 	//manages connected apps for users
@@ -83,7 +79,7 @@ func main() {
 	userControlledRouter.HandleFunc("/clients/{clientId}", controller.DeleteClientHandler).Methods(http.MethodDelete)
 	userControlledRouter.Use(controller.UserAuthorizeMiddleware)
 	userControlledRouter.Use(handlers.RecoveryHandler(),
-		func(h http.Handler) http.Handler { return loggingMiddleware(h) },
+		func(h http.Handler) http.Handler { return middleware.LoggingMiddleware(h) },
 	)
 
 	//Initialize API gateway
@@ -93,47 +89,9 @@ func main() {
 	}
 
 	for _, gw := range gateways {
-		r.Handle(gw.MatchRoute, registerMiddleware(gw, conf))
+		r.Handle(gw.MatchRoute, middleware.RegisterMiddleware(gw, conf))
 	}
 
 	logrus.Infof("Server starting on port %d", conf.Port)
 	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", conf.Port), r))
-}
-
-// panic recover, logging, Sentry middlewares
-func registerMiddleware(h http.Handler, conf *service.Config) http.Handler {
-	h = handlers.RecoveryHandler()(h)
-	h = loggingMiddleware(h)
-	h = sentryhttp.New(sentryhttp.Options{}).Handle(h)
-	return h
-}
-
-func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Call the next handler, which can be another middleware in the chain, or the final handler.
-		entry := logrus.NewEntry(logrus.StandardLogger())
-		entry = entry.WithField("host", r.Host)
-		entry = entry.WithField("id", r.Header.Get("X-Request-Id"))
-		remoteIpList := strings.Split(r.Header.Get("X-Forwarded-For"), ",")
-		if len(remoteIpList) > 0 {
-			entry = entry.WithField("remote_ip", remoteIpList[0])
-		}
-		entry = entry.WithField("connecting_ip", r.Header.Get("CF-Connecting-IP"))
-		entry = entry.WithField("country_code", r.Header.Get("CF-IPCountry"))
-		entry = entry.WithField("referer", r.Referer())
-		entry = entry.WithField("user_agent", r.UserAgent())
-		entry = entry.WithField("x_user_agent", r.Header.Get("X-User-Agent"))
-		entry = entry.WithField("uri", r.URL.Path)
-		u := &models.LogTokenInfo{}
-		r = r.WithContext(context.WithValue(r.Context(), "token_info", u))
-		//this already calls next.ServeHttp
-		m := httpsnoop.CaptureMetrics(next, w, r)
-		entry = entry.WithField("latency", m.Duration.Seconds())
-		entry = entry.WithField("status", m.Code)
-		entry = entry.WithField("bytes_out", m.Written)
-		tokenInfo := r.Context().Value("token_info").(*models.LogTokenInfo)
-		entry = entry.WithField("user_id", tokenInfo.UserId)
-		entry = entry.WithField("client_id", tokenInfo.ClientId)
-		entry.Info()
-	})
 }
