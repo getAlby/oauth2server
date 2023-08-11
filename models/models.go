@@ -5,6 +5,11 @@ import (
 	"gorm.io/gorm"
 )
 
+type LogTokenInfo struct {
+	UserId string
+	ClientId string
+}
+
 type ListClientsResponse struct {
 	Domain   string            `json:"domain,omitempty"`
 	ID       string            `json:"id,omitempty"`

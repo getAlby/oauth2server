@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"oauth2server/models"
 	"strings"
 
 	"github.com/getsentry/sentry-go"
@@ -31,6 +32,9 @@ func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	//check authorization
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	tokenInfo, err := origin.svc.OauthServer.Manager.LoadAccessToken(r.Context(), token)
+	logTokenInfo := r.Context().Value("token_info").(*models.LogTokenInfo)
+	logTokenInfo.UserId = tokenInfo.GetUserID()
+	logTokenInfo.ClientId = tokenInfo.GetClientID()
 	if err != nil {
 		if status, found := errorResponses[err.Error()]; found {
 			writeErrorResponse(w, err.Error(), status)
