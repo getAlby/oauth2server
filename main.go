@@ -10,10 +10,11 @@ import (
 
 	"github.com/felixge/httpsnoop"
 	"github.com/gorilla/handlers"
-	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
+	muxtrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/gorilla/mux"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 
 	"github.com/getsentry/sentry-go"
 	sentryhttp "github.com/getsentry/sentry-go/http"
@@ -56,7 +57,11 @@ func main() {
 	svc.OauthServer.SetAuthorizeScopeHandler(controller.AuthorizeScopeHandler)
 	svc.OauthServer.SetPreRedirectErrorHandler(controller.PreRedirectErrorHandler)
 
-	r := mux.NewRouter()
+	r := muxtrace.NewRouter(muxtrace.WithServiceName("oauth2server"))
+	if conf.DatadogAgentUrl != "" {
+		tracer.Start(tracer.WithAgentAddr(conf.DatadogAgentUrl))
+		defer tracer.Stop()
+	}
 
 	oauthRouter := r.NewRoute().Subrouter()
 	oauthRouter.HandleFunc("/oauth/authorize", controller.AuthorizationHandler)
