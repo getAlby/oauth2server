@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"oauth2server/controllers"
+	"oauth2server/models"
 	"oauth2server/service"
 	"strings"
 	"time"
@@ -122,11 +124,16 @@ func loggingMiddleware(next http.Handler) http.Handler {
 		entry = entry.WithField("user_agent", r.UserAgent())
 		entry = entry.WithField("x_user_agent", r.Header.Get("X-User-Agent"))
 		entry = entry.WithField("uri", r.URL.Path)
+		u := &models.LogTokenInfo{}
+		r = r.WithContext(context.WithValue(r.Context(), "token_info", u))
 		//this already calls next.ServeHttp
 		m := httpsnoop.CaptureMetrics(next, w, r)
 		entry = entry.WithField("latency", m.Duration.Seconds())
 		entry = entry.WithField("status", m.Code)
 		entry = entry.WithField("bytes_out", m.Written)
+		tokenInfo := r.Context().Value("token_info").(*models.LogTokenInfo)
+		entry = entry.WithField("user_id", tokenInfo.UserId)
+		entry = entry.WithField("client_id", tokenInfo.ClientId)
 		entry.Info()
 	})
 }
