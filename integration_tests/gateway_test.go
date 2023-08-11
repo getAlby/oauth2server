@@ -1,12 +1,14 @@
 package integrationtests
 
 import (
+	"context"
 	"encoding/json"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"oauth2server/constants"
+	"oauth2server/models"
 	"strings"
 	"testing"
 
@@ -49,6 +51,8 @@ func TestGateway(t *testing.T) {
 	assert.NoError(t, err)
 	//make API request
 	req, err := http.NewRequest(http.MethodGet, "/balance", nil)
+	u := &models.LogTokenInfo{}
+	req = req.WithContext(context.WithValue(req.Context(), "token_info", u))
 	req.Header.Set("Authorization", resp.AccessToken)
 	assert.NoError(t, err)
 	rec = httptest.NewRecorder()
