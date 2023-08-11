@@ -37,8 +37,8 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		entry = entry.WithField("user_agent", r.UserAgent())
 		entry = entry.WithField("x_user_agent", r.Header.Get("X-User-Agent"))
 		entry = entry.WithField("uri", r.URL.Path)
-		u := &models.LogTokenInfo{}
-		r = r.WithContext(context.WithValue(r.Context(), "token_info", u))
+		lti := &models.LogTokenInfo{}
+		r = r.WithContext(context.WithValue(r.Context(), "token_info", lti))
 		//this already calls next.ServeHttp
 		m := httpsnoop.CaptureMetrics(next, w, r)
 		entry = entry.WithField("latency", m.Duration.Seconds())
