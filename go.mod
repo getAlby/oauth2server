@@ -3,7 +3,7 @@ module oauth2server
 go 1.17
 
 require (
-	github.com/felixge/httpsnoop v1.0.1
+	github.com/felixge/httpsnoop v1.0.3
 	github.com/getAlby/go-oauth2-gorm v0.5.0
 	github.com/go-oauth2/oauth2/v4 v4.5.1
 	github.com/go-playground/validator/v10 v10.11.0
