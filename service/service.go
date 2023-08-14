@@ -41,11 +41,17 @@ func CombinedClientInfoHandler(r *http.Request) (clientID, clientSecret string, 
 }
 
 func AccessTokenExpHandler(w http.ResponseWriter, r *http.Request) (exp time.Duration, err error) {
-	expiry, err := strconv.Atoi(r.FormValue("expiry"));
-	if err != nil {
-		return time.Duration(0), err
+	var expiresAt int
+	expiry := r.FormValue("expires_at");
+	if expiry != "" {
+		expiresAt, err = strconv.Atoi(expiry);
+		if err != nil {
+			return time.Duration(0), err
+		}
+	} else {
+		expiresAt = 7200
 	}
-	return time.Duration(expiry) * time.Second, nil
+	return time.Duration(expiresAt) * time.Second, nil
 }
 
 func InitService(conf *Config) (svc *Service, err error) {
