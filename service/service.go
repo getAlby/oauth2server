@@ -200,7 +200,7 @@ func CheckRedirectUriDomain(baseURI, redirectURI string) error {
 		return err
 	}
 	if parsedClientUri.Host != parsedRedirect.Host || parsedClientUri.Scheme != parsedRedirect.Scheme {
-		err = fmt.Errorf("Wrong redirect uri for client. redirect_uri %s, client domain %s", baseURI, redirectURI)
+		err = fmt.Errorf("Wrong Redirect URI. Provided: [ Scheme: %s, Host: %s ], Expected: [ Scheme: %s, Host: %s ]", parsedRedirect.Scheme, parsedRedirect.Host, parsedClientUri.Scheme, parsedClientUri.Host)
 		sentry.CaptureException(err)
 		return err
 	}
