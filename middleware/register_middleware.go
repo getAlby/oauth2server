@@ -44,9 +44,12 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		entry = entry.WithField("latency", m.Duration.Seconds())
 		entry = entry.WithField("status", m.Code)
 		entry = entry.WithField("bytes_out", m.Written)
-		tokenInfo := r.Context().Value("token_info").(*models.LogTokenInfo)
-		entry = entry.WithField("user_id", tokenInfo.UserId)
-		entry = entry.WithField("client_id", tokenInfo.ClientId)
+		tokenInfo := r.Context().Value("token_info")
+		if tokenInfo != nil {
+			logTokenInfo := tokenInfo.(*models.LogTokenInfo)
+			entry = entry.WithField("user_id", logTokenInfo.UserId)
+			entry = entry.WithField("client_id", logTokenInfo.ClientId)
+		}
 		entry.Info()
 	})
 }
