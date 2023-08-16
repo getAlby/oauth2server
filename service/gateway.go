@@ -63,9 +63,12 @@ func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logTokenInfo := r.Context().Value("token_info").(*models.LogTokenInfo)
-	logTokenInfo.UserId = tokenInfo.GetUserID()
-	logTokenInfo.ClientId = tokenInfo.GetClientID()
+	lti := r.Context().Value("token_info")
+	if lti != nil {
+			logTokenInfo := lti.(*models.LogTokenInfo)
+			logTokenInfo.UserId = tokenInfo.GetUserID()
+			logTokenInfo.ClientId = tokenInfo.GetClientID()
+	}
 
 	origin.proxy.ServeHTTP(w, r)
 }
