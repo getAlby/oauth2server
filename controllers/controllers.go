@@ -304,6 +304,10 @@ func (ctrl *OAuthController) authenticateUser(r *http.Request) (token string, er
 	login = r.Form.Get("login")
 	password = r.Form.Get("password")
 
+	if login == "" && password == "" {
+		return "", fmt.Errorf("Cannot authenticate user, form data missing.")
+	}
+
 	if login == "" || password == "" {
 		return "", fmt.Errorf("Cannot authenticate user, login or password missing.")
 	}
