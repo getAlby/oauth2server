@@ -83,13 +83,13 @@ func InitService(conf *Config) (svc *Service, err error) {
 
 	srv := server.NewServer(server.NewConfig(), manager)
 	srv.ClientInfoHandler = CombinedClientInfoHandler
-	srv.AccessTokenExpHandler = svc.AccessTokenExpHandler
 	svc = &Service{
 		DB:          db,
 		OauthServer: srv,
 		Config:      conf,
 		ClientStore: clientStore,
 	}
+	srv.AccessTokenExpHandler = svc.AccessTokenExpHandler
 	return svc, nil
 }
 
