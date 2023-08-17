@@ -40,6 +40,18 @@ func CombinedClientInfoHandler(r *http.Request) (clientID, clientSecret string, 
 	return
 }
 
+func (svc *Service) AccessTokenExpHandler(w http.ResponseWriter, r *http.Request) (exp time.Duration, err error) {
+	expiry := r.FormValue("expires_in")
+	if expiry != "" {
+		expiresIn, err := strconv.Atoi(expiry)
+		if err != nil {
+			return time.Duration(0), err
+		}
+		return time.Duration(expiresIn) * time.Second, nil
+	}
+	return time.Duration(svc.Config.AccessTokenExpSeconds) * time.Second, nil
+}
+
 func InitService(conf *Config) (svc *Service, err error) {
 	manager := manage.NewDefaultManager()
 	manager.SetAuthorizeCodeTokenCfg(manage.DefaultAuthorizeCodeTokenCfg)
@@ -77,6 +89,7 @@ func InitService(conf *Config) (svc *Service, err error) {
 		Config:      conf,
 		ClientStore: clientStore,
 	}
+	srv.AccessTokenExpHandler = svc.AccessTokenExpHandler
 	return svc, nil
 }
 
