@@ -281,7 +281,7 @@ func (ctrl *OAuthController) UserAuthorizeMiddleware(h http.Handler) http.Handle
 		if err != nil {
 			logrus.Errorf("Error authenticating user %s", err.Error())
 			sentry.CaptureException(err)
-			w.WriteHeader(http.StatusUnauthorized)
+			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
 		r = r.WithContext(context.WithValue(r.Context(), CONTEXT_ID_KEY, id))
