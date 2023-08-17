@@ -40,18 +40,16 @@ func CombinedClientInfoHandler(r *http.Request) (clientID, clientSecret string, 
 	return
 }
 
-func AccessTokenExpHandler(w http.ResponseWriter, r *http.Request) (exp time.Duration, err error) {
-	var expiresAt int
-	expiry := r.FormValue("expires_at");
+func (svc *Service) AccessTokenExpHandler(w http.ResponseWriter, r *http.Request) (exp time.Duration, err error) {
+	expiry := r.FormValue("expires_in")
 	if expiry != "" {
-		expiresAt, err = strconv.Atoi(expiry);
+		expiresIn, err := strconv.Atoi(expiry)
 		if err != nil {
 			return time.Duration(0), err
 		}
-	} else {
-		expiresAt = 7200
+		return time.Duration(expiresIn) * time.Second, nil
 	}
-	return time.Duration(expiresAt) * time.Second, nil
+	return time.Duration(svc.Config.AccessTokenExpSeconds) * time.Second, nil
 }
 
 func InitService(conf *Config) (svc *Service, err error) {
@@ -85,7 +83,7 @@ func InitService(conf *Config) (svc *Service, err error) {
 
 	srv := server.NewServer(server.NewConfig(), manager)
 	srv.ClientInfoHandler = CombinedClientInfoHandler
-	srv.AccessTokenExpHandler = AccessTokenExpHandler
+	srv.AccessTokenExpHandler = svc.AccessTokenExpHandler
 	svc = &Service{
 		DB:          db,
 		OauthServer: srv,

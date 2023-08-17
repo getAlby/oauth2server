@@ -82,7 +82,7 @@ func fetchCode(id, redirect, scope string, controller *controllers.OAuthControll
 	values.Add("scope", scope)
 	values.Add("login", testAccountLogin)
 	values.Add("password", testAccountPassword)
-	values.Add("expires_at", "3600")
+	values.Add("expires_in", "3600")
 	req, err := http.NewRequest("POST", "/oauth/authorize", strings.NewReader(values.Encode()))
 	if err != nil {
 		return nil, err
