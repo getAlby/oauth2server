@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -21,6 +22,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+
+	"github.com/jackc/pgx/v5/stdlib"
+	sqltrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/database/sql"
+	gormtrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/gorm.io/gorm.v1"
 )
 
 type Service struct {
@@ -95,16 +100,29 @@ func InitService(conf *Config) (svc *Service, err error) {
 
 func initStores(dsn string, cfg *Config) (clientStore *oauth2gorm.ClientStore, tokenStore *oauth2gorm.TokenStore, db *gorm.DB, err error) {
 	//connect database
-	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		return nil, nil, nil, err
+	var sqlDb *sql.DB
+	if cfg.DatadogAgentUrl != "" {
+		sqltrace.Register("pgx", &stdlib.Driver{}, sqltrace.WithServiceName("oauth2server"))
+		sqlDb, err = sqltrace.Open("pgx", dsn)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+		db, err = gormtrace.Open(postgres.New(postgres.Config{Conn: sqlDb}), &gorm.Config{})
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	} else {
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		sqlDb, err = db.DB()
+		if err != nil {
+			return nil, nil, nil, err
+		}
 	}
 
-	//set database config
-	sqlDb, err := db.DB()
-	if err != nil {
-		return nil, nil, nil, err
-	}
 	sqlDb.SetMaxOpenConns(cfg.DatabaseMaxConns)
 	sqlDb.SetMaxIdleConns(cfg.DatabaseMaxIdleConns)
 	sqlDb.SetConnMaxLifetime(time.Duration(cfg.DatabaseConnMaxLifetime) * time.Second)
