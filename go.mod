@@ -8,9 +8,10 @@ require (
 	github.com/go-oauth2/oauth2/v4 v4.5.1
 	github.com/go-playground/validator/v10 v10.14.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/jackc/pgx/v5 v5.3.1
 	github.com/joho/godotenv v1.4.0
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/sirupsen/logrus v1.8.1
+	github.com/sirupsen/logrus v1.9.0
 	gorm.io/driver/postgres v1.4.6
 	gorm.io/gorm v1.25.2-0.20230530020048-26663ab9bf55
 )
@@ -36,7 +37,6 @@ require (
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
-	github.com/jackc/pgx/v5 v5.3.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/leodido/go-urn v1.2.4 // indirect
@@ -63,12 +63,12 @@ require (
 )
 
 require (
-	github.com/getsentry/sentry-go v0.13.0
+	github.com/getsentry/sentry-go v0.24.1
 	github.com/go-oauth2/oauth2 v3.9.2+incompatible
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
-	github.com/labstack/gommon v0.3.1
+	github.com/labstack/gommon v0.4.0
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.11.0 // indirect
 	golang.org/x/sys v0.10.0 // indirect
