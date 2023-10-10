@@ -3,54 +3,63 @@
 		"matchRoute": "/balance",
 		"origin": "http://localhost:3000",
 		"description": "Read your balance.",
-		"scope": "balance:read"
+		"scope": "balance:read",
+    "method": "GET"
 	},
 	{
 		"matchRoute": "/invoices/incoming",
 		"origin": "http://alby-simnet-getalbycom/api",
 		"description": "Read your invoice history, get realtime updates on invoices.",
-		"scope": "invoices:read"
+		"scope": "invoices:read",
+    "method": "GET"
 	},
 	{
 		"matchRoute": "/invoices/outgoing",
 		"origin": "http://alby-simnet-getalbycom/api",
 		"description": "Read your outgoing transaction history and check payment status.",
-		"scope": "transactions:read"
+		"scope": "transactions:read",
+    "method": "GET"
 	},
 	{
 		"matchRoute": "/invoices",
 		"origin": "http://localhost:3000/v2",
 		"description": "Create invoices on your behalf.",
-		"scope": "invoices:create"
+		"scope": "invoices:create",
+    "method": "POST"
 	},
 	{
 		"matchRoute": "/invoices/{payment_hash}",
 		"origin": "http://localhost:3000/v2",
 		"description": "Create invoices on your behalf.",
-		"scope": "invoices:create"
+		"scope": "invoices:create",
+    "method": "GET"
 	},
 	{
 		"matchRoute": "/payments/bolt11",
 		"origin": "http://localhost:3000/v2",
 		"description": "Send payments from your account.",
-		"scope": "payments:send"
+		"scope": "payments:send",
+    "method": "POST"
 	},
 	{
 		"matchRoute": "/payments/keysend",
 		"origin": "http://localhost:3000",
 		"description": "Send payments from your account.",
-		"scope": "payments:send"
+		"scope": "payments:send",
+    "method": "POST"
 	},
 	{
 		"matchRoute": "/user/value4value",
 		"origin": "http://alby-simnet-getalbycom/api",
 		"description": "Read your payment details like the Lightning Address and keysend information.",
-		"scope": "account:read"
+		"scope": "account:read",
+    "method": "GET"
 	},
 	{
 		"matchRoute": "/user/summary",
 		"origin": "http://alby-simnet-getalbycom/api",
 		"description": "Read your account summary",
-		"scope": "balance:read"
+		"scope": "balance:read",
+    "method": "GET"
 	}
 ]
