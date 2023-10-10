@@ -65,7 +65,10 @@ func (ctrl *OAuthController) EndpointHandler(w http.ResponseWriter, r *http.Requ
 
 func (ctrl *OAuthController) tokenError(w http.ResponseWriter, err error) error {
 	data, statusCode, header := ctrl.Service.OauthServer.GetErrorData(err)
-	logrus.Errorf("%s: %s", data["error_description"], data["error"])
+	logrus.
+		WithField("error_description", data["error_description"]).
+		WithField("error", err).
+		Error("token error")
 	return ctrl.token(w, data, header, statusCode)
 }
 
@@ -116,9 +119,9 @@ func (ctrl *OAuthController) TokenIntrospectHandler(w http.ResponseWriter, r *ht
 	// for middleware
 	lti := r.Context().Value("token_info")
 	if lti != nil {
-			logTokenInfo := lti.(*models.LogTokenInfo)
-			logTokenInfo.UserId = tokenInfo.GetUserID()
-			logTokenInfo.ClientId = tokenInfo.GetClientID()
+		logTokenInfo := lti.(*models.LogTokenInfo)
+		logTokenInfo.UserId = tokenInfo.GetUserID()
+		logTokenInfo.ClientId = tokenInfo.GetClientID()
 	}
 	scopes := map[string]string{}
 	w.Header().Add("Content-type", "application/json")
