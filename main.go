@@ -96,7 +96,7 @@ func main() {
 	}
 
 	for _, gw := range gateways {
-		r.Handle(gw.MatchRoute, middleware.RegisterMiddleware(gw, conf))
+		r.NewRoute().Path(gw.MatchRoute).Methods(gw.Method).Handler(middleware.RegisterMiddleware(gw, conf))
 	}
 
 	logrus.Infof("Server starting on port %d", conf.Port)

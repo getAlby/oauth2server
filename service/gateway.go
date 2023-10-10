@@ -25,6 +25,7 @@ type OriginServer struct {
 	proxy       http.Handler
 	Scope       string `json:"scope"`
 	MatchRoute  string `json:"matchRoute"`
+	Method      string `json:"method"`
 	Description string `json:"description"`
 }
 
