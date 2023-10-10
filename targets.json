@@ -28,6 +28,13 @@
         "method": "POST"
 	},
 	{
+		"matchRoute": "/invoices",
+		"origin": "http://alby-simnet-getalbycom/api",
+		"description": "Read your outgoing transaction history and check payment status.",
+		"scope": "invoices:read",
+        "method": "GET"
+	},
+	{
 		"matchRoute": "/invoices/{payment_hash}",
 		"origin": "http://localhost:3000/v2",
 		"description": "Create invoices on your behalf.",
