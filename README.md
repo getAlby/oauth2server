@@ -71,6 +71,21 @@ Based on the configuration of the instance run in production by Alby
 | GET `/balance`  | `balance:read`  | Get account balance |
 | GET `/user/value4value`  | `account:read`  | Read user's Lightning Address and keysend information|
 
+### Token Introspection
+- To view what all scopes your token has, client id and redirect URL, you can make a get request like the following with your access token:
+  ```
+  http https://api.regtest.getalby.com/oauth/token/introspect Authorization:"Bearer $your_access_token"
+
+  HTTP/1.1 200 OK
+  {
+    "client_id": "test_client",
+    "redirect_uri": "http://localhost:8080",
+    "scopes": {
+      "balance:read": "Read your account summary"
+    }
+  }
+  ```
+
 ## API Gateway
 - Use the access token to make a request to the LNDhub API:
 	```

@@ -65,7 +65,10 @@ func (ctrl *OAuthController) EndpointHandler(w http.ResponseWriter, r *http.Requ
 
 func (ctrl *OAuthController) tokenError(w http.ResponseWriter, err error) error {
 	data, statusCode, header := ctrl.Service.OauthServer.GetErrorData(err)
-	logrus.Errorf("%s: %s", data["error_description"], data["error"])
+	logrus.
+		WithField("error_description", data["error_description"]).
+		WithField("error", err).
+		Error("token error")
 	return ctrl.token(w, data, header, statusCode)
 }
 
@@ -104,6 +107,36 @@ func (ctrl *OAuthController) HandleTokenRequest(w http.ResponseWriter, r *http.R
 	}
 
 	return ctrl.token(w, ctrl.Service.OauthServer.GetTokenData(ti), nil)
+}
+
+func (ctrl *OAuthController) TokenIntrospectHandler(w http.ResponseWriter, r *http.Request) {
+	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	tokenInfo, err := ctrl.Service.OauthServer.Manager.LoadAccessToken(r.Context(), token)
+	if err != nil {
+		ctrl.tokenError(w, err)
+		return
+	}
+	// for middleware
+	lti := r.Context().Value("token_info")
+	if lti != nil {
+		logTokenInfo := lti.(*models.LogTokenInfo)
+		logTokenInfo.UserId = tokenInfo.GetUserID()
+		logTokenInfo.ClientId = tokenInfo.GetClientID()
+	}
+	info := map[string]interface{}{
+		"client_id":    tokenInfo.GetClientID(),
+		"redirect_uri": tokenInfo.GetRedirectURI(),
+		"scopes":       map[string]string{},
+	}
+	scopes := info["scopes"].(map[string]string)
+	w.Header().Add("Content-type", "application/json")
+	for _, sc := range strings.Split(tokenInfo.GetScope(), " ") {
+		scopes[sc] = ctrl.Service.Scopes[sc]
+	}
+	err = json.NewEncoder(w).Encode(info)
+	if err != nil {
+		logrus.Error(err)
+	}
 }
 
 func (ctrl *OAuthController) TokenHandler(w http.ResponseWriter, r *http.Request) {
