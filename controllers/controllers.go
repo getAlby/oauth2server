@@ -113,8 +113,8 @@ func (ctrl *OAuthController) TokenIntrospectHandler(w http.ResponseWriter, r *ht
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	tokenInfo, err := ctrl.Service.OauthServer.Manager.LoadAccessToken(r.Context(), token)
 	if err != nil {
-		logrus.Errorf("Something went wrong loading access token: %s, token %s, request %v", err.Error(), token, r)
-		sentry.CaptureException(err)
+		ctrl.tokenError(w, err)
+		return
 	}
 	// for middleware
 	lti := r.Context().Value("token_info")
@@ -123,12 +123,17 @@ func (ctrl *OAuthController) TokenIntrospectHandler(w http.ResponseWriter, r *ht
 		logTokenInfo.UserId = tokenInfo.GetUserID()
 		logTokenInfo.ClientId = tokenInfo.GetClientID()
 	}
-	scopes := map[string]string{}
+	info := map[string]interface{}{
+		"client_id":    tokenInfo.GetClientID(),
+		"redirect_uri": tokenInfo.GetRedirectURI(),
+		"scopes":       map[string]string{},
+	}
+	scopes := info["scopes"].(map[string]string)
 	w.Header().Add("Content-type", "application/json")
 	for _, sc := range strings.Split(tokenInfo.GetScope(), " ") {
 		scopes[sc] = ctrl.Service.Scopes[sc]
 	}
-	err = json.NewEncoder(w).Encode(scopes)
+	err = json.NewEncoder(w).Encode(info)
 	if err != nil {
 		logrus.Error(err)
 	}
