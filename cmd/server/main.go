@@ -69,11 +69,6 @@ func main() {
 
 	oauthRouter.HandleFunc("/oauth/token/introspect", controller.TokenIntrospectHandler).Methods(http.MethodGet)
 
-	//these routes should not be publicly accesible
-	oauthRouter.HandleFunc("/admin/clients", controller.CreateClientHandler).Methods(http.MethodPost)
-	oauthRouter.HandleFunc("/admin/clients", controller.ListAllClientsHandler).Methods(http.MethodGet)
-	oauthRouter.HandleFunc("/admin/clients/{clientId}", controller.FetchClientHandler).Methods(http.MethodGet)
-	oauthRouter.HandleFunc("/admin/clients/{clientId}", controller.UpdateClientMetadataHandler).Methods(http.MethodPut)
 	oauthRouter.Use(
 		handlers.RecoveryHandler(),
 		func(h http.Handler) http.Handler { return middleware.LoggingMiddleware(h) },

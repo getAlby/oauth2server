@@ -65,6 +65,7 @@ require (
 require (
 	github.com/getsentry/sentry-go v0.13.0
 	github.com/go-oauth2/oauth2 v3.9.2+incompatible
+	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0

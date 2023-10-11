@@ -11,10 +11,6 @@ import (
 	"oauth2server/service"
 	"strings"
 
-	mdls "github.com/go-oauth2/oauth2/v4/models"
-	"github.com/go-playground/validator/v10"
-	"gorm.io/gorm"
-
 	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
 	"github.com/getsentry/sentry-go"
 	oauthErrors "github.com/go-oauth2/oauth2/errors"
@@ -22,7 +18,6 @@ import (
 	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
-	"github.com/labstack/gommon/random"
 	"github.com/sirupsen/logrus"
 )
 
@@ -214,31 +209,6 @@ func (ctrl *OAuthController) ListAllClientsHandler(w http.ResponseWriter, r *htt
 	}
 }
 
-func (ctrl *OAuthController) FetchClientHandler(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["clientId"]
-	result := models.ClientMetaData{}
-	err := ctrl.Service.DB.First(&result, &models.ClientMetaData{ClientID: id}).Error
-	if err != nil {
-		sentry.CaptureException(err)
-		status := http.StatusInternalServerError
-		if err == gorm.ErrRecordNotFound {
-			status = http.StatusNotFound
-		}
-		http.Error(w, err.Error(), status)
-		return
-	}
-	w.Header().Add("Content-type", "application/json")
-	err = json.NewEncoder(w).Encode(&models.ListClientsResponse{
-		ID:       result.ClientID,
-		Name:     result.Name,
-		ImageURL: result.ImageUrl,
-		URL:      result.URL,
-	})
-	if err != nil {
-		logrus.Error(err)
-	}
-}
-
 func (ctrl *OAuthController) ListClientHandler(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value(CONTEXT_ID_KEY)
 	result := []oauth2gorm.TokenStoreItem{}
@@ -284,61 +254,6 @@ func (ctrl *OAuthController) ListClientHandler(w http.ResponseWriter, r *http.Re
 
 // should be used for budgets later
 func (ctrl *OAuthController) UpdateClientHandler(w http.ResponseWriter, r *http.Request) {
-}
-
-func (ctrl *OAuthController) UpdateClientMetadataHandler(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["clientId"]
-	req := &models.CreateClientRequest{}
-	err := json.NewDecoder(r.Body).Decode(req)
-	if err != nil {
-		logrus.Errorf("Error decoding client info request %s", err.Error())
-		w.WriteHeader(http.StatusBadRequest)
-		_, err = w.Write([]byte("Could not parse create client request"))
-		if err != nil {
-			logrus.Error(err)
-		}
-		return
-	}
-	found := &models.ClientMetaData{}
-	err = ctrl.Service.DB.FirstOrCreate(found, &models.ClientMetaData{ClientID: id}).Error
-	if err != nil {
-		logrus.Errorf("Error storing client info %s", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte("Something went wrong while storing client info"))
-		if err != nil {
-			logrus.Error(err)
-		}
-		return
-	}
-	if req.Name != "" {
-		found.Name = req.Name
-	}
-	if req.ImageUrl != "" {
-		found.ImageUrl = req.ImageUrl
-	}
-	if req.URL != "" {
-		found.URL = req.URL
-	}
-	err = ctrl.Service.DB.Save(found).Error
-	if err != nil {
-		logrus.Errorf("Error storing client info %s", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte("Something went wrong while storing client info"))
-		if err != nil {
-			logrus.Error(err)
-		}
-		return
-	}
-	w.Header().Add("Content-type", "application/json")
-	err = json.NewEncoder(w).Encode(&models.CreateClientResponse{
-		ClientId: id,
-		Name:     req.Name,
-		ImageUrl: req.ImageUrl,
-		Url:      req.URL,
-	})
-	if err != nil {
-		logrus.Error(err)
-	}
 }
 
 // deletes all tokens a user currently has for a given client
@@ -403,74 +318,6 @@ func (ctrl *OAuthController) authenticateUser(r *http.Request) (token string, er
 		return "", fmt.Errorf("Error authenticating user %s", err.Error())
 	}
 	return tokenResponse.AccessToken, nil
-}
-
-func (ctrl *OAuthController) CreateClientHandler(w http.ResponseWriter, r *http.Request) {
-	req := &models.CreateClientRequest{}
-	err := json.NewDecoder(r.Body).Decode(req)
-	if err != nil {
-		logrus.Errorf("Error decoding client info request %s", err.Error())
-		w.WriteHeader(http.StatusBadRequest)
-		_, err = w.Write([]byte("Could not parse create client request"))
-		if err != nil {
-			logrus.Error(err)
-		}
-		return
-	}
-	err = validator.New().Struct(req)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_, err = w.Write([]byte(err.Error()))
-		if err != nil {
-			logrus.Error(err)
-		}
-		return
-	}
-	id := random.New().String(constants.ClientIdLength)
-	var secret string
-	if !req.Public {
-		secret = random.New().String(constants.ClientSecretLength)
-	}
-
-	err = ctrl.Service.ClientStore.Create(r.Context(), &mdls.Client{
-		ID:     id,
-		Secret: secret,
-		Domain: req.Domain,
-	})
-	if err != nil {
-		logrus.Errorf("Error storing client info %s", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte("Something went wrong while storing client info"))
-		if err != nil {
-			logrus.Error(err)
-		}
-		return
-	}
-	err = ctrl.Service.DB.Create(&models.ClientMetaData{
-		ClientID: id,
-		Name:     req.Name,
-		ImageUrl: req.ImageUrl,
-		URL:      req.URL,
-	}).Error
-	if err != nil {
-		logrus.Errorf("Error storing client info %s", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte("Something went wrong while storing client info"))
-		if err != nil {
-			logrus.Error(err)
-		}
-		return
-	}
-	w.Header().Add("Content-type", "application/json")
-	err = json.NewEncoder(w).Encode(&models.CreateClientResponse{
-		Name:         req.Name,
-		ImageUrl:     req.ImageUrl,
-		ClientId:     id,
-		ClientSecret: secret,
-	})
-	if err != nil {
-		logrus.Error(err)
-	}
 }
 
 func (ctrl *OAuthController) PreRedirectErrorHandler(w http.ResponseWriter, r *server.AuthorizeRequest, err error) error {
