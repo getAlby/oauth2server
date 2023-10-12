@@ -20,7 +20,7 @@ import (
 
 var CONTEXT_ID_KEY string = "ID"
 
-type service struct {
+type Service struct {
 	cs     ClientStore
 	scopes map[string]string
 }
@@ -34,14 +34,14 @@ type ClientStore interface {
 	DeleteClient(clientId string) error
 }
 
-func NewService(cs ClientStore, scopes map[string]string) *service {
-	return &service{
+func NewService(cs ClientStore, scopes map[string]string) *Service {
+	return &Service{
 		cs:     cs,
 		scopes: scopes,
 	}
 }
 
-func RegisterRoutes(adminRouter, userRouter *mux.Router, svc *service) {
+func RegisterRoutes(adminRouter, userRouter *mux.Router, svc *Service) {
 	//these routes should not be publicly accesible
 	adminRouter.HandleFunc("/admin/clients", svc.CreateClientHandler).Methods(http.MethodPost)
 	adminRouter.HandleFunc("/admin/clients", svc.ListAllClientsHandler).Methods(http.MethodGet)
@@ -54,7 +54,7 @@ func RegisterRoutes(adminRouter, userRouter *mux.Router, svc *service) {
 
 }
 
-func (svc *service) CreateClientHandler(w http.ResponseWriter, r *http.Request) {
+func (svc *Service) CreateClientHandler(w http.ResponseWriter, r *http.Request) {
 	req := &CreateClientRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
@@ -103,7 +103,7 @@ func (svc *service) CreateClientHandler(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (svc *service) ListAllClientsHandler(w http.ResponseWriter, r *http.Request) {
+func (svc *Service) ListAllClientsHandler(w http.ResponseWriter, r *http.Request) {
 	result, err := svc.cs.ListAllClients()
 	if err != nil {
 		sentry.CaptureException(err)
@@ -125,7 +125,7 @@ func (svc *service) ListAllClientsHandler(w http.ResponseWriter, r *http.Request
 		logrus.Error(err)
 	}
 }
-func (svc *service) ListClientsForUserandler(w http.ResponseWriter, r *http.Request) {
+func (svc *Service) ListClientsForUserandler(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value(CONTEXT_ID_KEY)
 	result, err := svc.cs.GetTokensForUser(userId.(string))
 	if err != nil {
@@ -164,7 +164,7 @@ func (svc *service) ListClientsForUserandler(w http.ResponseWriter, r *http.Requ
 	}
 }
 
-func (svc *service) UpdateClientMetadataHandler(w http.ResponseWriter, r *http.Request) {
+func (svc *Service) UpdateClientMetadataHandler(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["clientId"]
 	req := &CreateClientRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
@@ -199,7 +199,7 @@ func (svc *service) UpdateClientMetadataHandler(w http.ResponseWriter, r *http.R
 		logrus.Error(err)
 	}
 }
-func (service *service) FetchClientHandler(w http.ResponseWriter, r *http.Request) {
+func (service *Service) FetchClientHandler(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["clientId"]
 	result, err := service.cs.GetClient(id)
 	if err != nil {
@@ -224,11 +224,11 @@ func (service *service) FetchClientHandler(w http.ResponseWriter, r *http.Reques
 }
 
 // should be used for budgets later
-func (svc *service) UpdateClientHandler(w http.ResponseWriter, r *http.Request) {
+func (svc *Service) UpdateClientHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // deletes all tokens a user currently has for a given client
-func (svc *service) DeleteClientHandler(w http.ResponseWriter, r *http.Request) {
+func (svc *Service) DeleteClientHandler(w http.ResponseWriter, r *http.Request) {
 	clientId := mux.Vars(r)["clientId"]
 	err := svc.cs.DeleteClient(clientId)
 	if err != nil {
