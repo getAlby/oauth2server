@@ -23,6 +23,7 @@ type service struct {
 type ClientStore interface {
 	Create(ctx context.Context, id, secret, domain, url, imageUrl, name string) error
 	ListAllClients() (result []models.ClientMetaData, err error)
+	UpdateClient(clientId, name, imageUrl, url string) (err error)
 }
 
 func NewService(cs ClientStore) *service {
@@ -124,8 +125,8 @@ func (svc *service) UpdateClientMetadataHandler(w http.ResponseWriter, r *http.R
 		}
 		return
 	}
-	found := &models.ClientMetaData{}
-	err = svc.DB.FirstOrCreate(found, &models.ClientMetaData{ClientID: id}).Error
+
+	err = svc.cs.UpdateClient(id, req.Name, req.ImageUrl, req.URL)
 	if err != nil {
 		logrus.Errorf("Error storing client info %s", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
@@ -133,27 +134,8 @@ func (svc *service) UpdateClientMetadataHandler(w http.ResponseWriter, r *http.R
 		if err != nil {
 			logrus.Error(err)
 		}
-		return
 	}
-	if req.Name != "" {
-		found.Name = req.Name
-	}
-	if req.ImageUrl != "" {
-		found.ImageUrl = req.ImageUrl
-	}
-	if req.URL != "" {
-		found.URL = req.URL
-	}
-	err = svc.DB.Save(found).Error
-	if err != nil {
-		logrus.Errorf("Error storing client info %s", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		_, err = w.Write([]byte("Something went wrong while storing client info"))
-		if err != nil {
-			logrus.Error(err)
-		}
-		return
-	}
+
 	w.Header().Add("Content-type", "application/json")
 	err = json.NewEncoder(w).Encode(&models.CreateClientResponse{
 		ClientId: id,

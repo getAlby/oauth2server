@@ -14,6 +14,25 @@ type gormClientStore struct {
 	cs *oauth2gorm.ClientStore
 }
 
+// UpdateClient implements ClientStore.
+func (store *gormClientStore) UpdateClient(clientId, name, imageUrl, url string) (err error) {
+	found := &models.ClientMetaData{}
+	err = store.db.FirstOrCreate(found, &models.ClientMetaData{ClientID: clientId}).Error
+	if err != nil {
+		return err
+	}
+	if name != "" {
+		found.Name = name
+	}
+	if imageUrl != "" {
+		found.ImageUrl = imageUrl
+	}
+	if url != "" {
+		found.URL = url
+	}
+	return store.db.Save(found).Error
+}
+
 // ListAllClients implements ClientStore.
 func (store *gormClientStore) ListAllClients() (result []models.ClientMetaData, err error) {
 	result = []models.ClientMetaData{}
