@@ -9,6 +9,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"oauth2server/constants"
+	"oauth2server/internal/clients"
 	"oauth2server/models"
 	"strconv"
 	"time"
@@ -140,7 +141,7 @@ func initStores(dsn string, cfg *Config) (clientStore *oauth2gorm.ClientStore, t
 	clientStore = oauth2gorm.NewClientStoreWithDB(&oauth2gorm.Config{TableName: constants.ClientTableName}, db)
 
 	//initialize extra db tables
-	err = db.AutoMigrate(&models.ClientMetaData{})
+	err = db.AutoMigrate(&clients.ClientMetaData{})
 	if err != nil {
 		return nil, nil, nil, err
 	}

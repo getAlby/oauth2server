@@ -2,7 +2,7 @@ package clients
 
 import (
 	"context"
-	"oauth2server/models"
+	"oauth2server/constants"
 
 	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
 	mdls "github.com/go-oauth2/oauth2/v4/models"
@@ -14,10 +14,37 @@ type gormClientStore struct {
 	cs *oauth2gorm.ClientStore
 }
 
+// DeleteClient implements ClientStore.
+func (store *gormClientStore) DeleteClient(clientId string) error {
+	return store.db.Table(constants.TokenTableName).Delete(&oauth2gorm.TokenStoreItem{}, &oauth2gorm.TokenStoreItem{ClientID: clientId}).Error
+}
+
+// GetTokensForUser implements ClientStore.
+func (store *gormClientStore) GetTokensForUser(userId string) (result []oauth2gorm.TokenStoreItem, err error) {
+	result = []oauth2gorm.TokenStoreItem{}
+	err = store.db.Table(constants.TokenTableName).Find(&result, &oauth2gorm.TokenStoreItem{
+		UserID: userId,
+	}).Error
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// GetClient implements ClientStore.
+func (store *gormClientStore) GetClient(clientId string) (result *ClientMetaData, err error) {
+	result = &ClientMetaData{}
+	err = store.db.First(result, &ClientMetaData{ClientID: clientId}).Error
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 // UpdateClient implements ClientStore.
 func (store *gormClientStore) UpdateClient(clientId, name, imageUrl, url string) (err error) {
-	found := &models.ClientMetaData{}
-	err = store.db.FirstOrCreate(found, &models.ClientMetaData{ClientID: clientId}).Error
+	found := &ClientMetaData{}
+	err = store.db.FirstOrCreate(found, &ClientMetaData{ClientID: clientId}).Error
 	if err != nil {
 		return err
 	}
@@ -34,9 +61,9 @@ func (store *gormClientStore) UpdateClient(clientId, name, imageUrl, url string)
 }
 
 // ListAllClients implements ClientStore.
-func (store *gormClientStore) ListAllClients() (result []models.ClientMetaData, err error) {
-	result = []models.ClientMetaData{}
-	err = store.db.Find(&result, &models.ClientMetaData{}).Error
+func (store *gormClientStore) ListAllClients() (result []ClientMetaData, err error) {
+	result = []ClientMetaData{}
+	err = store.db.Find(&result, &ClientMetaData{}).Error
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +79,7 @@ func (store *gormClientStore) Create(ctx context.Context, id string, secret stri
 	if err != nil {
 		return err
 	}
-	return store.db.Create(&models.ClientMetaData{
+	return store.db.Create(&ClientMetaData{
 		ClientID: id,
 		Name:     name,
 		ImageUrl: imageUrl,

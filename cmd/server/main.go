@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"oauth2server/controllers"
+	"oauth2server/internal/clients"
 	"oauth2server/middleware"
 	"oauth2server/service"
 	"time"
@@ -74,11 +75,16 @@ func main() {
 		func(h http.Handler) http.Handler { return middleware.LoggingMiddleware(h) },
 	)
 
-	//manages connected apps for users
+	//create client management service
+	//used to CRUD oauth clients
+	//and register HTTP routes for them
+	//there are admin routes to manage all clients
+	//and user routes to manage clients created by the currently authenticated user
 	userControlledRouter := r.Methods(http.MethodGet, http.MethodPost, http.MethodDelete).Subrouter()
-	userControlledRouter.HandleFunc("/clients", controller.ListClientHandler).Methods(http.MethodGet)
-	userControlledRouter.HandleFunc("/clients/{clientId}", controller.UpdateClientHandler).Methods(http.MethodPost)
-	userControlledRouter.HandleFunc("/clients/{clientId}", controller.DeleteClientHandler).Methods(http.MethodDelete)
+	clientStore := clients.NewGormClientStore(svc.DB, svc.ClientStore)
+	clientSvc := clients.NewService(clientStore, svc.Scopes)
+	clients.RegisterRoutes(oauthRouter, userControlledRouter, clientSvc)
+
 	userControlledRouter.Use(controller.UserAuthorizeMiddleware)
 	userControlledRouter.Use(handlers.RecoveryHandler(),
 		func(h http.Handler) http.Handler { return middleware.LoggingMiddleware(h) },

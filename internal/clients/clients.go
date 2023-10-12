@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"oauth2server/constants"
-	"oauth2server/models"
+	"strings"
 
+	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
 	"github.com/getsentry/sentry-go"
 	"github.com/go-playground/validator"
 	"gorm.io/gorm"
@@ -16,32 +18,44 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var CONTEXT_ID_KEY string = "ID"
+
 type service struct {
-	cs ClientStore
+	cs     ClientStore
+	scopes map[string]string
 }
 
 type ClientStore interface {
 	Create(ctx context.Context, id, secret, domain, url, imageUrl, name string) error
-	ListAllClients() (result []models.ClientMetaData, err error)
+	ListAllClients() (result []ClientMetaData, err error)
 	UpdateClient(clientId, name, imageUrl, url string) (err error)
+	GetClient(clientId string) (result *ClientMetaData, err error)
+	GetTokensForUser(userId string) (result []oauth2gorm.TokenStoreItem, err error)
+	DeleteClient(clientId string) error
 }
 
-func NewService(cs ClientStore) *service {
+func NewService(cs ClientStore, scopes map[string]string) *service {
 	return &service{
-		cs: cs,
+		cs:     cs,
+		scopes: scopes,
 	}
 }
 
-func RegisterRoutes(r *mux.Router, svc *service) {
+func RegisterRoutes(adminRouter, userRouter *mux.Router, svc *service) {
 	//these routes should not be publicly accesible
-	r.HandleFunc("/admin/clients", svc.CreateClientHandler).Methods(http.MethodPost)
-	r.HandleFunc("/admin/clients", svc.ListAllClientsHandler).Methods(http.MethodGet)
-	r.HandleFunc("/admin/clients/{clientId}", svc.FetchClientHandler).Methods(http.MethodGet)
-	r.HandleFunc("/admin/clients/{clientId}", svc.UpdateClientMetadataHandler).Methods(http.MethodPut)
+	adminRouter.HandleFunc("/admin/clients", svc.CreateClientHandler).Methods(http.MethodPost)
+	adminRouter.HandleFunc("/admin/clients", svc.ListAllClientsHandler).Methods(http.MethodGet)
+	adminRouter.HandleFunc("/admin/clients/{clientId}", svc.FetchClientHandler).Methods(http.MethodGet)
+	adminRouter.HandleFunc("/admin/clients/{clientId}", svc.UpdateClientMetadataHandler).Methods(http.MethodPut)
+
+	userRouter.HandleFunc("/clients", svc.ListClientsForUserandler).Methods(http.MethodGet)
+	userRouter.HandleFunc("/clients/{clientId}", svc.UpdateClientHandler).Methods(http.MethodPost)
+	userRouter.HandleFunc("/clients/{clientId}", svc.DeleteClientHandler).Methods(http.MethodDelete)
+
 }
 
 func (svc *service) CreateClientHandler(w http.ResponseWriter, r *http.Request) {
-	req := &models.CreateClientRequest{}
+	req := &CreateClientRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		logrus.Errorf("Error decoding client info request %s", err.Error())
@@ -78,7 +92,7 @@ func (svc *service) CreateClientHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Add("Content-type", "application/json")
-	err = json.NewEncoder(w).Encode(&models.CreateClientResponse{
+	err = json.NewEncoder(w).Encode(&CreateClientResponse{
 		Name:         req.Name,
 		ImageUrl:     req.ImageUrl,
 		ClientId:     id,
@@ -96,9 +110,9 @@ func (svc *service) ListAllClientsHandler(w http.ResponseWriter, r *http.Request
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	response := []models.ListClientsResponse{}
+	response := []ListClientsResponse{}
 	for _, md := range result {
-		response = append(response, models.ListClientsResponse{
+		response = append(response, ListClientsResponse{
 			ID:       md.ClientID,
 			Name:     md.Name,
 			ImageURL: md.ImageUrl,
@@ -111,10 +125,48 @@ func (svc *service) ListAllClientsHandler(w http.ResponseWriter, r *http.Request
 		logrus.Error(err)
 	}
 }
+func (svc *service) ListClientsForUserandler(w http.ResponseWriter, r *http.Request) {
+	userId := r.Context().Value(CONTEXT_ID_KEY)
+	result, err := svc.cs.GetTokensForUser(userId.(string))
+	if err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	response := []ListClientsResponse{}
+	for _, ti := range result {
+		//todo: more efficient queries ?
+		//store information in a single relation when a token is created?
+		data, err := svc.cs.GetClient(ti.ClientID)
+		if err != nil {
+			sentry.CaptureException(err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		parsed, _ := url.Parse(ti.RedirectURI)
+		scopes := map[string]string{}
+		for _, sc := range strings.Split(ti.Scope, " ") {
+			scopes[sc] = svc.scopes[sc]
+		}
+		response = append(response, ListClientsResponse{
+			Domain:   parsed.Host,
+			ID:       ti.ClientID,
+			Name:     data.Name,
+			ImageURL: data.ImageUrl,
+			URL:      data.URL,
+			Scopes:   scopes,
+		})
+	}
+	w.Header().Add("Content-type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		logrus.Error(err)
+	}
+}
 
 func (svc *service) UpdateClientMetadataHandler(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["clientId"]
-	req := &models.CreateClientRequest{}
+	req := &CreateClientRequest{}
 	err := json.NewDecoder(r.Body).Decode(req)
 	if err != nil {
 		logrus.Errorf("Error decoding client info request %s", err.Error())
@@ -137,7 +189,7 @@ func (svc *service) UpdateClientMetadataHandler(w http.ResponseWriter, r *http.R
 	}
 
 	w.Header().Add("Content-type", "application/json")
-	err = json.NewEncoder(w).Encode(&models.CreateClientResponse{
+	err = json.NewEncoder(w).Encode(&CreateClientResponse{
 		ClientId: id,
 		Name:     req.Name,
 		ImageUrl: req.ImageUrl,
@@ -149,8 +201,7 @@ func (svc *service) UpdateClientMetadataHandler(w http.ResponseWriter, r *http.R
 }
 func (service *service) FetchClientHandler(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["clientId"]
-	result := models.ClientMetaData{}
-	err := service.DB.First(&result, &models.ClientMetaData{ClientID: id}).Error
+	result, err := service.cs.GetClient(id)
 	if err != nil {
 		sentry.CaptureException(err)
 		status := http.StatusInternalServerError
@@ -161,7 +212,7 @@ func (service *service) FetchClientHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	w.Header().Add("Content-type", "application/json")
-	err = json.NewEncoder(w).Encode(&models.ListClientsResponse{
+	err = json.NewEncoder(w).Encode(&ListClientsResponse{
 		ID:       result.ClientID,
 		Name:     result.Name,
 		ImageURL: result.ImageUrl,
@@ -169,5 +220,20 @@ func (service *service) FetchClientHandler(w http.ResponseWriter, r *http.Reques
 	})
 	if err != nil {
 		logrus.Error(err)
+	}
+}
+
+// should be used for budgets later
+func (svc *service) UpdateClientHandler(w http.ResponseWriter, r *http.Request) {
+}
+
+// deletes all tokens a user currently has for a given client
+func (svc *service) DeleteClientHandler(w http.ResponseWriter, r *http.Request) {
+	clientId := mux.Vars(r)["clientId"]
+	err := svc.cs.DeleteClient(clientId)
+	if err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }

@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"oauth2server/constants"
 	"oauth2server/controllers"
-	"oauth2server/models"
+	"oauth2server/internal/clients"
 	"oauth2server/service"
 	"strings"
 	"testing"
@@ -123,7 +123,7 @@ func TestListDeleteTokensForClient(t *testing.T) {
 	req.SetBasicAuth(testAccountLogin, testAccountPassword)
 	rec = httptest.NewRecorder()
 	controller.UserAuthorizeMiddleware(http.HandlerFunc(controller.ListClientHandler)).ServeHTTP(rec, req)
-	clients := []models.ListClientsResponse{}
+	clients := []clients.ListClientsResponse{}
 	err = json.NewDecoder(rec.Body).Decode(&clients)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, clients)

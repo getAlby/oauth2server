@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"oauth2server/controllers"
+	"oauth2server/internal/clients"
 	"oauth2server/models"
 	"oauth2server/service"
 	"os"
@@ -16,7 +17,7 @@ import (
 	"gorm.io/gorm"
 )
 
-//account on lndhub.regtest.getalby.com
+// account on lndhub.regtest.getalby.com
 var testAccountLogin = os.Getenv("LNDHUB_LOGIN")
 var testAccountPassword = os.Getenv("LNDHUB_PASSWORD")
 
@@ -30,7 +31,7 @@ var testConfig = &service.Config{
 	RefreshTokenExpSeconds: 3600,
 }
 
-var testClient = models.CreateClientRequest{
+var testClient = clients.CreateClientRequest{
 	Domain:   "http://example.com",
 	Name:     "Test",
 	ImageUrl: "https://example.com/image.jpg",
@@ -58,7 +59,7 @@ func dropTables(db *gorm.DB, tables ...string) error {
 	return nil
 }
 
-func createClient(controller *controllers.OAuthController, reqBody *models.CreateClientRequest) (resp *models.CreateClientResponse, err error) {
+func createClient(svc *clients.service, reqBody *clients.CreateClientRequest) (resp *models.CreateClientResponse, err error) {
 	var buf bytes.Buffer
 	err = json.NewEncoder(&buf).Encode(reqBody)
 	if err != nil {
@@ -74,7 +75,7 @@ func createClient(controller *controllers.OAuthController, reqBody *models.Creat
 	if status != http.StatusOK {
 		return nil, fmt.Errorf("create client request failed %s", rec.Body.String())
 	}
-	resp = &models.CreateClientResponse{}
+	resp = &clients.CreateClientResponse{}
 	err = json.NewDecoder(rec.Body).Decode(resp)
 	if err != nil {
 		return nil, err

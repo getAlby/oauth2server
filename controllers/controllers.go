@@ -5,19 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
-	"oauth2server/constants"
 	"oauth2server/models"
 	"oauth2server/service"
 	"strings"
 
-	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
 	"github.com/getsentry/sentry-go"
 	oauthErrors "github.com/go-oauth2/oauth2/errors"
 	"github.com/go-oauth2/oauth2/v4/errors"
 	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/golang-jwt/jwt"
-	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 )
 
@@ -183,88 +179,6 @@ func (ctrl *OAuthController) UserAuthorizeHandler(w http.ResponseWriter, r *http
 		return "", fmt.Errorf("Cannot authenticate user, token does not contain user id")
 	}
 	return fmt.Sprintf("%.0f", claims["id"].(float64)), nil
-}
-
-func (ctrl *OAuthController) ListAllClientsHandler(w http.ResponseWriter, r *http.Request) {
-	result := []models.ClientMetaData{}
-	err := ctrl.Service.DB.Find(&result, &models.ClientMetaData{}).Error
-	if err != nil {
-		sentry.CaptureException(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	response := []models.ListClientsResponse{}
-	for _, md := range result {
-		response = append(response, models.ListClientsResponse{
-			ID:       md.ClientID,
-			Name:     md.Name,
-			ImageURL: md.ImageUrl,
-			URL:      md.URL,
-		})
-	}
-	w.Header().Add("Content-type", "application/json")
-	err = json.NewEncoder(w).Encode(response)
-	if err != nil {
-		logrus.Error(err)
-	}
-}
-
-func (ctrl *OAuthController) ListClientHandler(w http.ResponseWriter, r *http.Request) {
-	userId := r.Context().Value(CONTEXT_ID_KEY)
-	result := []oauth2gorm.TokenStoreItem{}
-	err := ctrl.Service.DB.Table(constants.TokenTableName).Find(&result, &oauth2gorm.TokenStoreItem{
-		UserID: userId.(string),
-	}).Error
-	if err != nil {
-		sentry.CaptureException(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	response := []models.ListClientsResponse{}
-	for _, ti := range result {
-		//todo: more efficient queries ?
-		//store information in a single relation when a token is created?
-		clientMetadata := &models.ClientMetaData{}
-		err = ctrl.Service.DB.First(&clientMetadata, &models.ClientMetaData{ClientID: ti.ClientID}).Error
-		if err != nil {
-			sentry.CaptureException(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		parsed, _ := url.Parse(ti.RedirectURI)
-		scopes := map[string]string{}
-		for _, sc := range strings.Split(ti.Scope, " ") {
-			scopes[sc] = ctrl.Service.Scopes[sc]
-		}
-		response = append(response, models.ListClientsResponse{
-			Domain:   parsed.Host,
-			ID:       ti.ClientID,
-			Name:     clientMetadata.Name,
-			ImageURL: clientMetadata.ImageUrl,
-			URL:      clientMetadata.URL,
-			Scopes:   scopes,
-		})
-	}
-	w.Header().Add("Content-type", "application/json")
-	err = json.NewEncoder(w).Encode(response)
-	if err != nil {
-		logrus.Error(err)
-	}
-}
-
-// should be used for budgets later
-func (ctrl *OAuthController) UpdateClientHandler(w http.ResponseWriter, r *http.Request) {
-}
-
-// deletes all tokens a user currently has for a given client
-func (ctrl *OAuthController) DeleteClientHandler(w http.ResponseWriter, r *http.Request) {
-	clientId := mux.Vars(r)["clientId"]
-	err := ctrl.Service.DB.Table(constants.TokenTableName).Delete(&oauth2gorm.TokenStoreItem{}, &oauth2gorm.TokenStoreItem{ClientID: clientId}).Error
-	if err != nil {
-		sentry.CaptureException(err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
 }
 
 func (ctrl *OAuthController) UserAuthorizeMiddleware(h http.Handler) http.Handler {
