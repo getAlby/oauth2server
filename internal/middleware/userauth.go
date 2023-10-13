@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"oauth2server/internal/tokens"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/golang-jwt/jwt"
@@ -94,10 +93,18 @@ func authenticateUser(r *http.Request, lndhubUrl string) (token string, err erro
 		return "", fmt.Errorf("Cannot authenticate user, login or password wrong.")
 	}
 	//return access code
-	tokenResponse := &tokens.TokenResponse{}
+	tokenResponse := &LNDHubTokenResponse{}
 	err = json.NewDecoder(resp.Body).Decode(tokenResponse)
 	if err != nil {
 		return "", fmt.Errorf("Error authenticating user %s", err.Error())
 	}
 	return tokenResponse.AccessToken, nil
+}
+
+type LNDHubTokenResponse struct {
+	AccessToken  string `json:"access_token"`
+	ExpiresIn    int    `json:"expires_in"`
+	RefreshToken string `json:"refresh_token"`
+	Scope        string `json:"scope"`
+	TokenType    string `json:"token_type"`
 }

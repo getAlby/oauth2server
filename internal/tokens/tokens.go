@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"oauth2server/models"
+	"oauth2server/internal/middleware"
 	"strings"
 
 	"github.com/getsentry/sentry-go"
@@ -95,7 +95,7 @@ func (svc *service) TokenIntrospectHandler(w http.ResponseWriter, r *http.Reques
 	// for middleware
 	lti := r.Context().Value("token_info")
 	if lti != nil {
-		logTokenInfo := lti.(*models.LogTokenInfo)
+		logTokenInfo := lti.(*middleware.LogTokenInfo)
 		logTokenInfo.UserId = tokenInfo.GetUserID()
 		logTokenInfo.ClientId = tokenInfo.GetClientID()
 	}
@@ -197,12 +197,4 @@ func (svc *service) AuthorizeScopeHandler(w http.ResponseWriter, r *http.Request
 		}
 	}
 	return requestedScope, nil
-}
-
-type TokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	ExpiresIn    int    `json:"expires_in"`
-	RefreshToken string `json:"refresh_token"`
-	Scope        string `json:"scope"`
-	TokenType    string `json:"token_type"`
 }

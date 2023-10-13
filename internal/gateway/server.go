@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"oauth2server/models"
+	"oauth2server/internal/middleware"
 	"strings"
 
 	"github.com/getsentry/sentry-go"
@@ -69,7 +69,7 @@ func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	lti := r.Context().Value("token_info")
 	if lti != nil {
-		logTokenInfo := lti.(*models.LogTokenInfo)
+		logTokenInfo := lti.(*middleware.LogTokenInfo)
 		logTokenInfo.UserId = tokenInfo.GetUserID()
 		logTokenInfo.ClientId = tokenInfo.GetClientID()
 	}

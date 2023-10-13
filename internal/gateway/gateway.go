@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"oauth2server/models"
 	"os"
 	"strconv"
 	"time"
@@ -75,7 +74,7 @@ func generateLNDHubAccessToken(secret []byte, expiryInSeconds int, userId string
 	if err != nil {
 		return "", err
 	}
-	claims := &models.LNDhubClaims{
+	claims := &LNDhubClaims{
 		ID: int64(id),
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Second * time.Duration(expiryInSeconds)).Unix(),
@@ -90,4 +89,10 @@ func generateLNDHubAccessToken(secret []byte, expiryInSeconds int, userId string
 	}
 
 	return t, nil
+}
+
+type LNDhubClaims struct {
+	ID        int64 `json:"id"`
+	IsRefresh bool  `json:"isRefresh"`
+	jwt.StandardClaims
 }

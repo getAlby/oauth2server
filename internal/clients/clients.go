@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
-	"oauth2server/constants"
 	"strings"
 
 	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
@@ -16,6 +15,11 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/labstack/gommon/random"
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	ClientIdLength     = 10
+	ClientSecretLength = 20
 )
 
 var CONTEXT_ID_KEY string = "ID"
@@ -75,10 +79,10 @@ func (svc *Service) CreateClientHandler(w http.ResponseWriter, r *http.Request) 
 		}
 		return
 	}
-	id := random.New().String(constants.ClientIdLength)
+	id := random.New().String(ClientIdLength)
 	var secret string
 	if !req.Public {
-		secret = random.New().String(constants.ClientSecretLength)
+		secret = random.New().String(ClientSecretLength)
 	}
 
 	err = svc.cs.Create(r.Context(), id, secret, req.Domain, req.URL, req.ImageUrl, req.Name)
