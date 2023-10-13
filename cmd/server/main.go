@@ -34,7 +34,7 @@ func main() {
 		Port            int    `default:"8081"`
 		LndHubUrl       string `envconfig:"LNDHUB_URL" required:"true"`
 		JWTSecret       []byte `envconfig:"JWT_SECRET" required:"true"`
-		TargetFile      string `envconfig:"TARGET_FILE" required:"true"`
+		TargetFile      string `envconfig:"TARGET_FILE" default:"targets.json"`
 	}
 	globalConf := &config{}
 	err = envconfig.Process("", globalConf)
