@@ -63,13 +63,7 @@ func main() {
 	}
 
 	oauthRouter := r.NewRoute().Subrouter()
-	oauthRouter.HandleFunc("/oauth/authorize", controller.AuthorizationHandler)
-	oauthRouter.HandleFunc("/oauth/token", controller.TokenHandler)
-	oauthRouter.HandleFunc("/oauth/scopes", controller.ScopeHandler)
-	oauthRouter.HandleFunc("/oauth/endpoints", controller.EndpointHandler)
-
-	oauthRouter.HandleFunc("/oauth/token/introspect", controller.TokenIntrospectHandler).Methods(http.MethodGet)
-
+	//init token service here
 	oauthRouter.Use(
 		handlers.RecoveryHandler(),
 		func(h http.Handler) http.Handler { return middleware.LoggingMiddleware(h) },

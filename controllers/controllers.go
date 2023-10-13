@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"oauth2server/models"
 	"oauth2server/service"
 	"strings"
 
@@ -25,117 +24,6 @@ type OAuthController struct {
 	Service *service.Service
 }
 
-func (ctrl *OAuthController) AuthorizationHandler(w http.ResponseWriter, r *http.Request) {
-	err := ctrl.Service.OauthServer.HandleAuthorizeRequest(w, r)
-	if err != nil {
-		sentry.CaptureException(err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-	}
-}
-
-func (ctrl *OAuthController) ScopeHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-type", "application/json")
-	err := json.NewEncoder(w).Encode(ctrl.Service.Scopes)
-	if err != nil {
-		logrus.Error(err)
-	}
-}
-
-func (ctrl *OAuthController) EndpointHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-type", "application/json")
-	endpoints := ctrl.Service.Endpoints
-	//not needed for clients
-	for _, e := range endpoints {
-		e.Origin = ""
-	}
-	err := json.NewEncoder(w).Encode(endpoints)
-	if err != nil {
-		logrus.Error(err)
-	}
-}
-
-func (ctrl *OAuthController) tokenError(w http.ResponseWriter, err error) error {
-	data, statusCode, header := ctrl.Service.OauthServer.GetErrorData(err)
-	logrus.
-		WithField("error_description", data["error_description"]).
-		WithField("error", err).
-		Error("token error")
-	return ctrl.token(w, data, header, statusCode)
-}
-
-func (ctrl *OAuthController) token(w http.ResponseWriter, data map[string]interface{}, header http.Header, statusCode ...int) error {
-	if fn := ctrl.Service.OauthServer.ResponseTokenHandler; fn != nil {
-		return fn(w, data, header, statusCode...)
-	}
-	w.Header().Set("Content-Type", "application/json;charset=UTF-8")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Pragma", "no-cache")
-
-	for key := range header {
-		w.Header().Set(key, header.Get(key))
-	}
-
-	status := http.StatusOK
-	if len(statusCode) > 0 && statusCode[0] > 0 {
-		status = statusCode[0]
-	}
-
-	w.WriteHeader(status)
-	return json.NewEncoder(w).Encode(data)
-}
-
-func (ctrl *OAuthController) HandleTokenRequest(w http.ResponseWriter, r *http.Request) error {
-	ctx := r.Context()
-
-	gt, tgr, err := ctrl.Service.OauthServer.ValidationTokenRequest(r)
-	if err != nil {
-		return ctrl.tokenError(w, err)
-	}
-
-	ti, err := ctrl.Service.OauthServer.GetAccessToken(ctx, gt, tgr)
-	if err != nil {
-		return ctrl.tokenError(w, err)
-	}
-
-	return ctrl.token(w, ctrl.Service.OauthServer.GetTokenData(ti), nil)
-}
-
-func (ctrl *OAuthController) TokenIntrospectHandler(w http.ResponseWriter, r *http.Request) {
-	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-	tokenInfo, err := ctrl.Service.OauthServer.Manager.LoadAccessToken(r.Context(), token)
-	if err != nil {
-		ctrl.tokenError(w, err)
-		return
-	}
-	// for middleware
-	lti := r.Context().Value("token_info")
-	if lti != nil {
-		logTokenInfo := lti.(*models.LogTokenInfo)
-		logTokenInfo.UserId = tokenInfo.GetUserID()
-		logTokenInfo.ClientId = tokenInfo.GetClientID()
-	}
-	info := map[string]interface{}{
-		"client_id":    tokenInfo.GetClientID(),
-		"redirect_uri": tokenInfo.GetRedirectURI(),
-		"scopes":       map[string]string{},
-	}
-	scopes := info["scopes"].(map[string]string)
-	w.Header().Add("Content-type", "application/json")
-	for _, sc := range strings.Split(tokenInfo.GetScope(), " ") {
-		scopes[sc] = ctrl.Service.Scopes[sc]
-	}
-	err = json.NewEncoder(w).Encode(info)
-	if err != nil {
-		logrus.Error(err)
-	}
-}
-
-func (ctrl *OAuthController) TokenHandler(w http.ResponseWriter, r *http.Request) {
-	err := ctrl.HandleTokenRequest(w, r)
-	if err != nil {
-		sentry.CaptureException(err)
-	}
-}
 func (ctrl *OAuthController) InternalErrorHandler(err error) (re *errors.Response) {
 	//workaround to not show "sql: no rows in result set" to user
 	sentry.CaptureException(err)
