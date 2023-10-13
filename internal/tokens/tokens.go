@@ -1,7 +1,6 @@
 package tokens
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,7 +12,6 @@ import (
 	"github.com/go-oauth2/oauth2/v4/errors"
 	oauthErrors "github.com/go-oauth2/oauth2/v4/errors"
 	"github.com/go-oauth2/oauth2/v4/server"
-	"github.com/golang-jwt/jwt"
 	"github.com/gorilla/mux"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
@@ -34,7 +32,7 @@ func RegisterRoutes(r *mux.Router, svc *service) {
 	r.HandleFunc("/oauth/token/introspect", svc.TokenIntrospectHandler).Methods(http.MethodGet)
 }
 
-func NewService(cs oauth2.ClientStore, ts oauth2.TokenStore, scopes map[string]string) (result *service, err error) {
+func NewService(cs oauth2.ClientStore, ts oauth2.TokenStore, scopes map[string]string, userAuth server.UserAuthorizationHandler) (result *service, err error) {
 	//create oauth server from conf
 	conf := Config{}
 	err = envconfig.Process("", &conf)
@@ -49,10 +47,11 @@ func NewService(cs oauth2.ClientStore, ts oauth2.TokenStore, scopes map[string]s
 		oauthServer: srv,
 		scopes:      scopes,
 	}
-	srv.SetUserAuthorizationHandler(svc.UserAuthorizeHandler)
+	srv.SetUserAuthorizationHandler(userAuth)
 	srv.SetInternalErrorHandler(svc.InternalErrorHandler)
 	srv.SetAuthorizeScopeHandler(svc.AuthorizeScopeHandler)
 	srv.SetPreRedirectErrorHandler(preRedirectErrorHandler)
+	svc.config = conf
 
 	return svc, nil
 }
@@ -178,66 +177,6 @@ func (svc *service) InternalErrorHandler(err error) (re *errors.Response) {
 	}
 }
 
-func (svc service) UserAuthorizeHandler(w http.ResponseWriter, r *http.Request) (userID string, err error) {
-	token, err := authenticateUser(r, svc.config.LndHubUrl)
-	if err != nil {
-		logrus.Error(err)
-		sentry.CaptureException(err)
-		return "", err
-	}
-
-	claims := jwt.MapClaims{}
-	_, err = jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
-		return svc.config.JWTSecret, nil
-	})
-	if err != nil {
-		return "", err
-	}
-	if claims["id"] == nil {
-		return "", fmt.Errorf("Cannot authenticate user, token does not contain user id")
-	}
-	return fmt.Sprintf("%.0f", claims["id"].(float64)), nil
-}
-
-func authenticateUser(r *http.Request, lndhubUrl string) (token string, err error) {
-	err = r.ParseForm()
-	//look for login/password in form data
-	//but also allow basic auth, form data only works with POST requests
-	login, password, ok := r.BasicAuth()
-	if ok {
-		r.Form.Add("login", login)
-		r.Form.Add("password", password)
-	}
-	if err != nil {
-		return "", fmt.Errorf("Error parsing form data %s", err.Error())
-	}
-	login = r.Form.Get("login")
-	password = r.Form.Get("password")
-
-	if login == "" && password == "" {
-		return "", fmt.Errorf("Cannot authenticate user, form data missing.")
-	}
-
-	if login == "" || password == "" {
-		return "", fmt.Errorf("Cannot authenticate user, login or password missing.")
-	}
-	//authenticate user against lndhub
-	resp, err := http.PostForm(fmt.Sprintf("%s/auth", lndhubUrl), r.Form)
-	if err != nil {
-		return "", fmt.Errorf("Error authenticating user %s", err.Error())
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Cannot authenticate user, login or password wrong.")
-	}
-	//return access code
-	tokenResponse := &TokenResponse{}
-	err = json.NewDecoder(resp.Body).Decode(tokenResponse)
-	if err != nil {
-		return "", fmt.Errorf("Error authenticating user %s", err.Error())
-	}
-	return tokenResponse.AccessToken, nil
-}
-
 func preRedirectErrorHandler(w http.ResponseWriter, r *server.AuthorizeRequest, err error) error {
 	logrus.WithField("Authorize request", r).Error(err)
 	sentry.CaptureException(err)
@@ -260,19 +199,9 @@ func (svc *service) AuthorizeScopeHandler(w http.ResponseWriter, r *http.Request
 }
 
 type TokenResponse struct {
-	AccessToken string `json:"access_token"`
-}
-
-func (svc *service) UserAuthorizeMiddleware(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id, err := svc.UserAuthorizeHandler(w, r)
-		if err != nil {
-			logrus.Errorf("Error authenticating user %s", err.Error())
-			sentry.CaptureException(err)
-			http.Error(w, err.Error(), http.StatusUnauthorized)
-			return
-		}
-		r = r.WithContext(context.WithValue(r.Context(), CONTEXT_ID_KEY, id))
-		h.ServeHTTP(w, r)
-	})
+	AccessToken  string `json:"access_token"`
+	ExpiresIn    int    `json:"expires_in"`
+	RefreshToken string `json:"refresh_token"`
+	Scope        string `json:"scope"`
+	TokenType    string `json:"token_type"`
 }

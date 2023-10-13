@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"net/http"
 	"oauth2server/internal/clients"
+	"oauth2server/internal/middleware"
 	"oauth2server/internal/repository"
 	"oauth2server/internal/tokens"
-	"oauth2server/middleware"
-	"os"
 	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/joho/godotenv"
+	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
 	muxtrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/gorilla/mux"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
@@ -27,17 +27,23 @@ func main() {
 		logrus.Errorf("Error loading environment variables: %v", err)
 	}
 	//load global config
-	sentryDsn := os.Getenv("SENTRY_DSN")
-	ddAgentUrl := os.Getenv("DATADOG_AGENT_URL")
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8081"
+	type config struct {
+		SentryDSN       string `envconfig:"SENTRY_DSN"`
+		DatadogAgentUrl string `envconfig:"DATADOG_AGENT_URL"`
+		Port            int    `default:"8081"`
+		LndHubUrl       string `envconfig:"LNDHUB_URL" required:"true"`
+		JWTSecret       []byte `envconfig:"JWT_SECRET" required:"true"`
+	}
+	globalConf := &config{}
+	err = envconfig.Process("", globalConf)
+	if err != nil {
+		logrus.Fatal(err)
 	}
 
 	// Setup exception tracking with Sentry if configured
-	if sentryDsn != "" {
+	if globalConf.SentryDSN != "" {
 		if err = sentry.Init(sentry.ClientOptions{
-			Dsn:          sentryDsn,
+			Dsn:          globalConf.SentryDSN,
 			IgnoreErrors: []string{"401"},
 		}); err != nil {
 			logrus.Errorf("sentry init error: %v", err)
@@ -46,8 +52,8 @@ func main() {
 	}
 
 	r := muxtrace.NewRouter(muxtrace.WithServiceName("oauth2server"))
-	if ddAgentUrl != "" {
-		tracer.Start(tracer.WithAgentAddr(ddAgentUrl))
+	if globalConf.DatadogAgentUrl != "" {
+		tracer.Start(tracer.WithAgentAddr(globalConf.DatadogAgentUrl))
 		defer tracer.Stop()
 	}
 
@@ -62,13 +68,19 @@ func main() {
 
 	oauthRouter := r.NewRoute().Subrouter()
 
-	//set up token service
-	//responsible for managing oauth tokens
-	//this service handles the oauth authorization
-	tokenSvc, err := tokens.NewService(cs, ts, scopes)
+	//create auth middleware
+	lndhubUserAuth, err := middleware.NewLNDHubUserAuth(globalConf.JWTSecret, globalConf.LndHubUrl)
 	if err != nil {
 		logrus.Fatal(err)
 	}
+	//set up token service
+	//responsible for managing oauth tokens
+	//this service handles the oauth authorization
+	tokenSvc, err := tokens.NewService(cs, ts, scopes, lndhubUserAuth.LNDHubUserAuth)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	tokens.RegisterRoutes(oauthRouter, tokenSvc)
 	oauthRouter.Use(
 		handlers.RecoveryHandler(),
 		func(h http.Handler) http.Handler { return middleware.LoggingMiddleware(h) },
@@ -83,7 +95,7 @@ func main() {
 	clientSvc := clients.NewService(clientStore, scopes)
 	clients.RegisterRoutes(oauthRouter, userControlledRouter, clientSvc)
 
-	userControlledRouter.Use(tokenSvc.UserAuthorizeMiddleware)
+	userControlledRouter.Use(lndhubUserAuth.UserAuthorizeMiddleware)
 	userControlledRouter.Use(handlers.RecoveryHandler(),
 		func(h http.Handler) http.Handler { return middleware.LoggingMiddleware(h) },
 	)
@@ -99,6 +111,6 @@ func main() {
 		r.NewRoute().Path(gw.MatchRoute).Methods(gw.Method).Handler(middleware.RegisterMiddleware(gw, conf))
 	}
 
-	logrus.Infof("Server starting on port %s", port)
-	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", port), r))
+	logrus.Infof("Server starting on port %s", globalConf.Port)
+	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", globalConf.Port), r))
 }
