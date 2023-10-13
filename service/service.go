@@ -190,7 +190,8 @@ func (svc *Service) InjectJWTAccessToken(token oauth2.TokenInfo, r *http.Request
 	//the request is dispatched immediately, so the tokens can have a short expiry
 	expirySeconds := 60
 	lndhubId := token.GetUserID()
-	lndhubToken, err := GenerateLNDHubAccessToken(svc.Config.JWTSecret, expirySeconds, lndhubId)
+	clientId := token.GetClientID()
+	lndhubToken, err := GenerateLNDHubAccessToken(svc.Config.JWTSecret, expirySeconds, lndhubId, clientId)
 	if err != nil {
 		return err
 	}
@@ -199,7 +200,7 @@ func (svc *Service) InjectJWTAccessToken(token oauth2.TokenInfo, r *http.Request
 }
 
 // GenerateAccessToken : Generate Access Token
-func GenerateLNDHubAccessToken(secret []byte, expiryInSeconds int, userId string) (string, error) {
+func GenerateLNDHubAccessToken(secret []byte, expiryInSeconds int, userId string, clientId string) (string, error) {
 	//convert string to int
 	id, err := strconv.Atoi(userId)
 	if err != nil {
@@ -207,6 +208,7 @@ func GenerateLNDHubAccessToken(secret []byte, expiryInSeconds int, userId string
 	}
 	claims := &models.LNDhubClaims{
 		ID: int64(id),
+		ClientId: clientId,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Second * time.Duration(expiryInSeconds)).Unix(),
 		},

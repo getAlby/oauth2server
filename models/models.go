@@ -44,7 +44,8 @@ type CreateClientResponse struct {
 	ClientSecret string `json:"clientSecret,omitempty"`
 }
 type LNDhubClaims struct {
-	ID        int64 `json:"id"`
-	IsRefresh bool  `json:"isRefresh"`
+	ID        int64  `json:"id"`
+	ClientId  string `json:"clientId"`
+	IsRefresh bool   `json:"isRefresh"`
 	jwt.StandardClaims
 }
