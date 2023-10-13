@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"oauth2server/models"
-	"oauth2server/service"
 	"strings"
 
 	"github.com/felixge/httpsnoop"
@@ -14,7 +13,7 @@ import (
 )
 
 // panic recover, logging, Sentry middlewares
-func RegisterMiddleware(h http.Handler, conf *service.Config) http.Handler {
+func RegisterMiddleware(h http.Handler) http.Handler {
 	h = handlers.RecoveryHandler()(h)
 	h = LoggingMiddleware(h)
 	h = sentryhttp.New(sentryhttp.Options{}).Handle(h)

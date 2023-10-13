@@ -20,7 +20,8 @@ import (
 var CONTEXT_ID_KEY string = "ID"
 
 type service struct {
-	oauthServer *server.Server
+	//todo: don't expose oauthserver for code cleanliness
+	OauthServer *server.Server
 	scopes      map[string]string
 	config      Config
 }
@@ -44,7 +45,7 @@ func NewService(cs oauth2.ClientStore, ts oauth2.TokenStore, scopes map[string]s
 		return nil, err
 	}
 	svc := &service{
-		oauthServer: srv,
+		OauthServer: srv,
 		scopes:      scopes,
 	}
 	srv.SetUserAuthorizationHandler(userAuth)
@@ -57,7 +58,7 @@ func NewService(cs oauth2.ClientStore, ts oauth2.TokenStore, scopes map[string]s
 }
 
 func (svc *service) AuthorizationHandler(w http.ResponseWriter, r *http.Request) {
-	err := svc.oauthServer.HandleAuthorizeRequest(w, r)
+	err := svc.OauthServer.HandleAuthorizeRequest(w, r)
 	if err != nil {
 		sentry.CaptureException(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -67,26 +68,26 @@ func (svc *service) AuthorizationHandler(w http.ResponseWriter, r *http.Request)
 func (svc *service) TokenHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	gt, tgr, err := svc.oauthServer.ValidationTokenRequest(r)
+	gt, tgr, err := svc.OauthServer.ValidationTokenRequest(r)
 	if err != nil {
 		sentry.CaptureException(err)
 		svc.tokenError(w, err)
 		return
 	}
 
-	ti, err := svc.oauthServer.GetAccessToken(ctx, gt, tgr)
+	ti, err := svc.OauthServer.GetAccessToken(ctx, gt, tgr)
 	if err != nil {
 		sentry.CaptureException(err)
 		svc.tokenError(w, err)
 		return
 	}
 
-	svc.token(w, svc.oauthServer.GetTokenData(ti), nil)
+	svc.token(w, svc.OauthServer.GetTokenData(ti), nil)
 }
 
 func (svc *service) TokenIntrospectHandler(w http.ResponseWriter, r *http.Request) {
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-	tokenInfo, err := svc.oauthServer.Manager.LoadAccessToken(r.Context(), token)
+	tokenInfo, err := svc.OauthServer.Manager.LoadAccessToken(r.Context(), token)
 	if err != nil {
 		svc.tokenError(w, err)
 		return
@@ -123,7 +124,7 @@ func (svc *service) ScopeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (svc *service) tokenError(w http.ResponseWriter, err error) error {
-	data, statusCode, header := svc.oauthServer.GetErrorData(err)
+	data, statusCode, header := svc.OauthServer.GetErrorData(err)
 	logrus.
 		WithField("error_description", data["error_description"]).
 		WithField("error", err).
@@ -132,7 +133,7 @@ func (svc *service) tokenError(w http.ResponseWriter, err error) error {
 }
 
 func (svc *service) token(w http.ResponseWriter, data map[string]interface{}, header http.Header, statusCode ...int) error {
-	if fn := svc.oauthServer.ResponseTokenHandler; fn != nil {
+	if fn := svc.OauthServer.ResponseTokenHandler; fn != nil {
 		return fn(w, data, header, statusCode...)
 	}
 	w.Header().Set("Content-Type", "application/json;charset=UTF-8")

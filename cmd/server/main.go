@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"oauth2server/internal/clients"
+	"oauth2server/internal/gateway"
 	"oauth2server/internal/middleware"
 	"oauth2server/internal/repository"
 	"oauth2server/internal/tokens"
@@ -33,6 +34,7 @@ func main() {
 		Port            int    `default:"8081"`
 		LndHubUrl       string `envconfig:"LNDHUB_URL" required:"true"`
 		JWTSecret       []byte `envconfig:"JWT_SECRET" required:"true"`
+		TargetFile      string `envconfig:"TARGET_FILE" required:"true"`
 	}
 	globalConf := &config{}
 	err = envconfig.Process("", globalConf)
@@ -101,16 +103,18 @@ func main() {
 	)
 
 	//Initialize API gateway
-	//todo: move to package
-	gateways, err := svc.InitGateways()
+	gateways, err := gateway.InitGateways(
+		globalConf.TargetFile,
+		tokenSvc.OauthServer.Manager.LoadAccessToken,
+		globalConf.JWTSecret)
 	if err != nil {
 		logrus.Fatal(err)
 	}
 
 	for _, gw := range gateways {
-		r.NewRoute().Path(gw.MatchRoute).Methods(gw.Method).Handler(middleware.RegisterMiddleware(gw, conf))
+		r.NewRoute().Path(gw.MatchRoute).Methods(gw.Method).Handler(middleware.RegisterMiddleware(gw))
 	}
 
-	logrus.Infof("Server starting on port %s", globalConf.Port)
-	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%s", globalConf.Port), r))
+	logrus.Infof("Server starting on port %d", globalConf.Port)
+	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", globalConf.Port), r))
 }
