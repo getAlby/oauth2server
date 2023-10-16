@@ -2,13 +2,17 @@ package clients
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
+	"github.com/getsentry/sentry-go"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,6 +23,10 @@ var testClient = CreateClientRequest{
 	ImageUrl: "https://example.com/image.jpg",
 	URL:      "https://example.com",
 }
+
+var testAccountLogin = "login"
+var testAccountPassword = "password"
+var testAccountUserId = "123"
 
 func TestCreateClient(t *testing.T) {
 	inmem := NewInMem()
@@ -75,4 +83,58 @@ func httpReq(handler func(http.ResponseWriter, *http.Request), method, url, clie
 	}
 	return json.NewDecoder(rec.Body).Decode(resp)
 
+}
+func MockUserAuthorizeMiddleware(h http.HandlerFunc) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id, err := authenticateUser(r)
+		if err != nil {
+			logrus.Errorf("Error authenticating user %s", err.Error())
+			sentry.CaptureException(err)
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		r = r.WithContext(context.WithValue(r.Context(), CONTEXT_ID_KEY, id))
+		h.ServeHTTP(w, r)
+	})
+}
+
+func authenticateUser(r *http.Request) (userId string, err error) {
+	err = r.ParseForm()
+	login, pw, ok := r.BasicAuth()
+	if !ok {
+		return "", fmt.Errorf("bad auth")
+	}
+	if login != testAccountLogin || pw != testAccountPassword {
+		return "", fmt.Errorf("bad auth")
+	}
+	return testAccountUserId, nil
+}
+
+func TestListTokensForClient(t *testing.T) {
+	inmem := NewInMem().(*InMem)
+	svc := NewService(inmem, testScopes)
+	reqBody := testClient
+	resp := &CreateClientResponse{}
+	err := httpReq(svc.CreateClientHandler, http.MethodPost, "/admin/clients", "", &reqBody, resp)
+	assert.NoError(t, err)
+	//add token for client for user
+	inmem.AddToken(context.Background(), oauth2gorm.TokenStoreItem{
+		Access:   "123access",
+		ClientID: resp.ClientId,
+		UserID:   testAccountUserId,
+		Scope:    "balance:read",
+	})
+	//list clients
+	//use mock middleware
+	req, err := http.NewRequest(http.MethodGet, "/clients", nil)
+	assert.NoError(t, err)
+	req.SetBasicAuth(testAccountLogin, testAccountPassword)
+	clients := []ListClientsResponse{}
+	rec := httptest.NewRecorder()
+	http.Handler(MockUserAuthorizeMiddleware(svc.ListClientsForUserHandler)).ServeHTTP(rec, req)
+	err = json.NewDecoder(rec.Body).Decode(&clients)
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.NotEmpty(t, clients)
+	assert.Equal(t, testClient.Name, clients[0].Name)
 }

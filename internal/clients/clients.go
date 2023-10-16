@@ -52,9 +52,10 @@ func RegisterRoutes(adminRouter, userRouter *mux.Router, svc *Service) {
 	adminRouter.HandleFunc("/admin/clients/{clientId}", svc.FetchClientHandler).Methods(http.MethodGet)
 	adminRouter.HandleFunc("/admin/clients/{clientId}", svc.UpdateClientMetadataHandler).Methods(http.MethodPut)
 
-	userRouter.HandleFunc("/clients", svc.ListClientsForUserandler).Methods(http.MethodGet)
+	userRouter.HandleFunc("/clients", svc.ListClientsForUserHandler).Methods(http.MethodGet)
 	userRouter.HandleFunc("/clients/{clientId}", svc.UpdateClientHandler).Methods(http.MethodPost)
-	userRouter.HandleFunc("/clients/{clientId}", svc.DeleteClientHandler).Methods(http.MethodDelete)
+	// Not used yet - we also need to implement token deletion
+	//userRouter.HandleFunc("/clients/{clientId}", svc.DeleteClientHandler).Methods(http.MethodDelete)
 
 }
 
@@ -129,7 +130,7 @@ func (svc *Service) ListAllClientsHandler(w http.ResponseWriter, r *http.Request
 		logrus.Error(err)
 	}
 }
-func (svc *Service) ListClientsForUserandler(w http.ResponseWriter, r *http.Request) {
+func (svc *Service) ListClientsForUserHandler(w http.ResponseWriter, r *http.Request) {
 	userId := r.Context().Value(CONTEXT_ID_KEY)
 	result, err := svc.cs.GetTokensForUser(userId.(string))
 	if err != nil {
@@ -231,7 +232,7 @@ func (service *Service) FetchClientHandler(w http.ResponseWriter, r *http.Reques
 func (svc *Service) UpdateClientHandler(w http.ResponseWriter, r *http.Request) {
 }
 
-// deletes all tokens a user currently has for a given client
+// Not used yet - we also need to implement token deletion
 func (svc *Service) DeleteClientHandler(w http.ResponseWriter, r *http.Request) {
 	clientId := mux.Vars(r)["clientId"]
 	err := svc.cs.DeleteClient(clientId)

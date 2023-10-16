@@ -20,8 +20,6 @@ const testToken = "TEST1234"
 
 var testJWTSecret = []byte("SUPERSECRET")
 
-type mockToken struct{}
-
 func testTokenFunc(ctx context.Context, token string) (result oauth2.TokenInfo, err error) {
 
 	if token != testToken {
@@ -94,7 +92,6 @@ func TestGateway(t *testing.T) {
 	req.Header.Set("Authorization", testToken)
 	assert.NoError(t, err)
 	rec = httptest.NewRecorder()
-	//wrap gateway with mw
 	gw2 := gateways[1]
 	gw2.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusUnauthorized, rec.Result().StatusCode)
