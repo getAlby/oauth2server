@@ -2,11 +2,15 @@ package clients
 
 import (
 	"context"
-	"oauth2server/constants"
 
 	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
 	mdls "github.com/go-oauth2/oauth2/v4/models"
 	"gorm.io/gorm"
+)
+
+const (
+	TokenTableName  = "oauth2_tokens"
+	ClientTableName = "oauth2_clients"
 )
 
 type gormClientStore struct {
@@ -16,13 +20,13 @@ type gormClientStore struct {
 
 // DeleteClient implements ClientStore.
 func (store *gormClientStore) DeleteClient(clientId string) error {
-	return store.db.Table(constants.TokenTableName).Delete(&oauth2gorm.TokenStoreItem{}, &oauth2gorm.TokenStoreItem{ClientID: clientId}).Error
+	return store.db.Table(TokenTableName).Delete(&oauth2gorm.TokenStoreItem{}, &oauth2gorm.TokenStoreItem{ClientID: clientId}).Error
 }
 
 // GetTokensForUser implements ClientStore.
 func (store *gormClientStore) GetTokensForUser(userId string) (result []oauth2gorm.TokenStoreItem, err error) {
 	result = []oauth2gorm.TokenStoreItem{}
-	err = store.db.Table(constants.TokenTableName).Find(&result, &oauth2gorm.TokenStoreItem{
+	err = store.db.Table(TokenTableName).Find(&result, &oauth2gorm.TokenStoreItem{
 		UserID: userId,
 	}).Error
 	if err != nil {
