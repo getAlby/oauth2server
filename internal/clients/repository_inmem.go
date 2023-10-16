@@ -12,6 +12,7 @@ type InMem struct {
 	mtx      sync.Mutex
 	metadata map[string]ClientMetaData
 	secrets  map[string]oauth2gorm.ClientStoreItem
+	tokens   map[string]oauth2gorm.TokenStoreItem
 }
 
 // Create implements ClientStore.
@@ -51,8 +52,20 @@ func (im *InMem) GetClient(clientId string) (result *ClientMetaData, err error) 
 }
 
 // GetTokensForUser implements ClientStore.
-func (*InMem) GetTokensForUser(userId string) (result []oauth2gorm.TokenStoreItem, err error) {
-	return nil, fmt.Errorf("not implemented")
+func (im *InMem) GetTokensForUser(userId string) (result []oauth2gorm.TokenStoreItem, err error) {
+	result = []oauth2gorm.TokenStoreItem{}
+	for _, t := range im.tokens {
+		result = append(result, t)
+	}
+	return result, nil
+}
+
+// Create implements ClientStore.
+func (im *InMem) AddToken(ctx context.Context, token oauth2gorm.TokenStoreItem) error {
+	im.mtx.Lock()
+	im.tokens[token.Access] = token
+	im.mtx.Unlock()
+	return nil
 }
 
 // ListAllClients implements ClientStore.
@@ -87,7 +100,9 @@ func (im *InMem) UpdateClient(clientId string, name string, imageUrl string, url
 
 func NewInMem() ClientStore {
 	return &InMem{
+		mtx:      sync.Mutex{},
 		metadata: map[string]ClientMetaData{},
 		secrets:  map[string]oauth2gorm.ClientStoreItem{},
+		tokens:   map[string]oauth2gorm.TokenStoreItem{},
 	}
 }
