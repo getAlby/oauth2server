@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"oauth2server/constants"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -29,8 +28,8 @@ func TestCreateClient(t *testing.T) {
 	err := httpReq(svc.CreateClientHandler, http.MethodPost, "/admin/clients", "", &reqBody, resp)
 	assert.NoError(t, err)
 	// check length of id, secret
-	assert.Equal(t, constants.ClientIdLength, len(resp.ClientId))
-	assert.Equal(t, constants.ClientSecretLength, len(resp.ClientSecret))
+	assert.Equal(t, ClientIdLength, len(resp.ClientId))
+	assert.Equal(t, ClientSecretLength, len(resp.ClientSecret))
 	// check other fields
 	assert.Equal(t, reqBody.Name, resp.Name)
 	assert.Equal(t, reqBody.ImageUrl, resp.ImageUrl)

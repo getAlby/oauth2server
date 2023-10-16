@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"oauth2server/internal/middleware"
 	"strings"
 	"testing"
 
@@ -57,7 +58,8 @@ func TestCreateToken(t *testing.T) {
 	rec, err = fetchToken(testClient.ID, testClient.Secret, code, testClient.Domain, tokenSvc.TokenHandler)
 	assert.NoError(t, err)
 	//validate access token, refresh token with object from database
-	resp := &TokenResponse{}
+	//use the lndhub token response struct because it has the same structure
+	resp := &middleware.LNDHubTokenResponse{}
 	err = json.NewDecoder(rec.Body).Decode(resp)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, resp.AccessToken)
