@@ -9,6 +9,7 @@ import (
 
 	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
 	"github.com/getsentry/sentry-go"
+	"github.com/go-oauth2/oauth2/v4"
 	"github.com/go-playground/validator"
 	"gorm.io/gorm"
 
@@ -36,6 +37,7 @@ type ClientStore interface {
 	GetClient(clientId string) (result *ClientMetaData, err error)
 	GetTokensForUser(userId string) (result []oauth2gorm.TokenStoreItem, err error)
 	DeleteClient(clientId string) error
+	GetByID(ctx context.Context, id string) (oauth2.ClientInfo, error)
 }
 
 func NewService(cs ClientStore, scopes map[string]string) *Service {

@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
+	oauth2 "github.com/go-oauth2/oauth2/v4"
+	"github.com/go-oauth2/oauth2/v4/models"
 )
 
 type InMem struct {
@@ -13,6 +15,19 @@ type InMem struct {
 	metadata map[string]ClientMetaData
 	secrets  map[string]oauth2gorm.ClientStoreItem
 	tokens   map[string]oauth2gorm.TokenStoreItem
+}
+
+// GetByID implements ClientStore.
+func (im *InMem) GetByID(ctx context.Context, id string) (oauth2.ClientInfo, error) {
+	client, ok := im.secrets[id]
+	if !ok {
+		return nil, fmt.Errorf("not found")
+	}
+	return &models.Client{
+		ID:     client.ID,
+		Secret: client.Secret,
+		Domain: client.Domain,
+	}, nil
 }
 
 // Create implements ClientStore.

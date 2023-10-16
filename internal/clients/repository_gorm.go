@@ -4,6 +4,7 @@ import (
 	"context"
 
 	oauth2gorm "github.com/getAlby/go-oauth2-gorm"
+	oauth2 "github.com/go-oauth2/oauth2/v4"
 	mdls "github.com/go-oauth2/oauth2/v4/models"
 	"gorm.io/gorm"
 )
@@ -16,6 +17,11 @@ const (
 type gormClientStore struct {
 	db *gorm.DB
 	cs *oauth2gorm.ClientStore
+}
+
+// GetByID implements ClientStore.
+func (store *gormClientStore) GetByID(ctx context.Context, id string) (oauth2.ClientInfo, error) {
+	return store.cs.GetByID(ctx, id)
 }
 
 // DeleteClient implements ClientStore.
