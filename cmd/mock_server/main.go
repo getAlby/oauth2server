@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"oauth2server/internal/clients"
@@ -27,9 +28,10 @@ func main() {
 	}
 	//load global config
 	type config struct {
-		Port       int    `default:"8081"`
-		JWTSecret  []byte `envconfig:"JWT_SECRET" required:"true"`
-		TargetFile string `envconfig:"TARGET_FILE" default:"targets.json"`
+		Port           int    `default:"8081"`
+		MockServerPort int    `default:"3000"`
+		JWTSecret      []byte `envconfig:"JWT_SECRET" required:"true"`
+		TargetFile     string `envconfig:"TARGET_FILE" default:"targets.json"`
 	}
 	globalConf := &config{}
 	err = envconfig.Process("", globalConf)
@@ -117,7 +119,20 @@ func main() {
 		r.NewRoute().Path(gw.MatchRoute).Methods(gw.Method).Handler(middleware.RegisterMiddleware(gw))
 	}
 
-	//todo: start downstream mock servers that serve some json
+	//start mock server that will respond some data and the JWT token
+	//we might parse the JWT token and return the user id for better testing later
+	//you can add anything you like here
+	downstream := mux.NewRouter()
+	downstream.HandleFunc("/balance", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"authorization header": r.Header.Get("Authorization"),
+			"message":              "you've reached the downstream mocker server, well done.",
+		})
+	})
+	go func() {
+		http.ListenAndServe(fmt.Sprintf(":%d", globalConf.MockServerPort), downstream)
+	}()
 
 	logrus.Infof("Server starting on port %d", globalConf.Port)
 	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", globalConf.Port), r))
