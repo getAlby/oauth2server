@@ -25,7 +25,7 @@ to access the Alby Wallet API in their name. Possible use-cases include:
 ### Local development
 
 1. Run the mock server `go run cmd/mock_server/main.go` . The mock server differs from the production server in that it uses an in-memory datastore, it will auto-create client credentials and tokens, uses a mock middleware for user authentication, and will also spin up its own downstream server. 
-2. If you want to create an oauth code/token, you can use the preloaded client credentials `id/secret` and redirect_uri `http://localhost:8080`: 
+2. If you want to create an oauth code/token, you can use the preloaded client credentials `id/secret` and redirect_uri `http://localhost:8080`. You also always need to use the user credentials `login` and `password` as the login and password. 
 
 ```
 http -f POST localhost:8081/oauth/authorize\?client_id\=id\&response_type\=code\&redirect_uri\=http://localhost:8080\&scope\=balance:read login=login password=password
