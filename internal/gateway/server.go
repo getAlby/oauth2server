@@ -1,13 +1,15 @@
-package service
+package gateway
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"oauth2server/models"
+	"oauth2server/internal/middleware"
 	"strings"
 
 	"github.com/getsentry/sentry-go"
+	"github.com/go-oauth2/oauth2/v4"
 	"github.com/go-oauth2/oauth2/v4/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -20,19 +22,20 @@ var errorResponses = map[string]int{
 }
 
 type OriginServer struct {
-	Origin      string `json:"origin,omitempty"`
-	svc         *Service
-	proxy       http.Handler
-	Scope       string `json:"scope"`
-	MatchRoute  string `json:"matchRoute"`
-	Method      string `json:"method"`
-	Description string `json:"description"`
+	Origin         string `json:"origin,omitempty"`
+	proxy          http.Handler
+	Scope          string `json:"scope"`
+	MatchRoute     string `json:"matchRoute"`
+	Method         string `json:"method"`
+	Description    string `json:"description"`
+	CheckTokenFunc func(context.Context, string) (oauth2.TokenInfo, error)
+	JWTInjectFunc  func(ti oauth2.TokenInfo, r *http.Request) error
 }
 
 func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	//check authorization
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-	tokenInfo, err := origin.svc.OauthServer.Manager.LoadAccessToken(r.Context(), token)
+	tokenInfo, err := origin.CheckTokenFunc(r.Context(), token)
 	if err != nil {
 		if status, found := errorResponses[err.Error()]; found {
 			writeErrorResponse(w, err.Error(), status)
@@ -56,7 +59,7 @@ func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = origin.svc.InjectJWTAccessToken(tokenInfo, r)
+	err = origin.JWTInjectFunc(tokenInfo, r)
 	if err != nil {
 		logrus.Errorf("Something went wrong generating lndhub token: %s", err.Error())
 		sentry.CaptureException(err)
@@ -66,9 +69,9 @@ func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	lti := r.Context().Value("token_info")
 	if lti != nil {
-			logTokenInfo := lti.(*models.LogTokenInfo)
-			logTokenInfo.UserId = tokenInfo.GetUserID()
-			logTokenInfo.ClientId = tokenInfo.GetClientID()
+		logTokenInfo := lti.(*middleware.LogTokenInfo)
+		logTokenInfo.UserId = tokenInfo.GetUserID()
+		logTokenInfo.ClientId = tokenInfo.GetClientID()
 	}
 
 	origin.proxy.ServeHTTP(w, r)

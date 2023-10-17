@@ -1,4 +1,15 @@
-This service consists out of 2 pieces: an OAuth server issuing tokens and an API Gateway that is secured by these tokens.
+# Summary
+This service consists out of 3 main packages:
+
+- `internal/clients`, which provides CRUD operations for oauth _clients_
+- `internal/tokens`, which provides a wrapper around https://github.com/go-oauth2/oauth2. It is linked with the clients package by the same database objects.
+- `internal/gateway`, which proxies API requests, it checks the OAuth tokens and forwards the requests to an origin server. It's linked to the tokens package by the `checkTokenFunc`.
+
+Supporting packages
+
+- The middleware package defines some logging middleware and a user authentication middleware, which is used to authenticate the user that wants to CRUD oauth tokens.
+- The repository package initializes Postgres databases to be used as datastores. In-memory databases are also implemented in their respective packages (clients/tokens)
+
 The service is supposed to be run together with lndhub.go, but could support multiple backends of any kind.
 
 Deployed on regtest at `https://api.regtest.getalby.com`.
