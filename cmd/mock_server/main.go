@@ -25,7 +25,6 @@ func main() {
 	//load global config
 	type config struct {
 		Port       int    `default:"8081"`
-		LndHubUrl  string `envconfig:"LNDHUB_URL" required:"true"`
 		JWTSecret  []byte `envconfig:"JWT_SECRET" required:"true"`
 		TargetFile string `envconfig:"TARGET_FILE" default:"targets.json"`
 	}
@@ -43,16 +42,15 @@ func main() {
 
 	oauthRouter := r.NewRoute().Subrouter()
 
-	//create auth middleware
-	//todo: run a different middleware with hard-coded credentials
-	lndhubUserAuth, err := middleware.NewLNDHubUserAuth(globalConf.JWTSecret, globalConf.LndHubUrl)
+	//use a mocking authentication middleware
+	mockAuth, err := middleware.NewMockAuth()
 	if err != nil {
 		logrus.Fatal(err)
 	}
 	//set up in-memory stores
 	cs := clients.NewInMem()
 	ts := tokens.NewInmemStore()
-	tokenSvc, err := tokens.NewService(cs, ts, scopes, lndhubUserAuth.LNDHubUserAuth)
+	tokenSvc, err := tokens.NewService(cs, ts, scopes, mockAuth.MockAuth)
 	if err != nil {
 		logrus.Fatal(err)
 	}
@@ -70,7 +68,7 @@ func main() {
 	clientSvc := clients.NewService(cs, scopes)
 	clients.RegisterRoutes(oauthRouter, userControlledRouter, clientSvc)
 
-	userControlledRouter.Use(lndhubUserAuth.UserAuthorizeMiddleware)
+	userControlledRouter.Use(mockAuth.UserAuthorizeMiddleware)
 	userControlledRouter.Use(handlers.RecoveryHandler(),
 		func(h http.Handler) http.Handler { return middleware.LoggingMiddleware(h) },
 	)
@@ -87,6 +85,8 @@ func main() {
 	for _, gw := range gateways {
 		r.NewRoute().Path(gw.MatchRoute).Methods(gw.Method).Handler(middleware.RegisterMiddleware(gw))
 	}
+
+	//todo: start downstream mock servers that serve some json
 
 	logrus.Infof("Server starting on port %d", globalConf.Port)
 	logrus.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", globalConf.Port), r))
