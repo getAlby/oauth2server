@@ -76,7 +76,8 @@ func generateLNDHubAccessToken(secret []byte, expiryInSeconds int, userId, clien
 		return "", err
 	}
 	claims := &LNDhubClaims{
-		ID: int64(id),
+		ID:       int64(id),
+		ClientId: clientId,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Second * time.Duration(expiryInSeconds)).Unix(),
 		},
