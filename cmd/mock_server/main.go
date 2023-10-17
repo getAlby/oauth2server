@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"oauth2server/internal/clients"
@@ -8,6 +9,7 @@ import (
 	"oauth2server/internal/middleware"
 	"oauth2server/internal/tokens"
 
+	"github.com/go-oauth2/oauth2/v4"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -17,6 +19,7 @@ import (
 
 func main() {
 	logrus.SetFormatter(&logrus.JSONFormatter{})
+	logrus.Info("starting mock server. ONLY FOR DEVELOPMENT!")
 	// Load env file as env variables
 	err := godotenv.Load(".env")
 	if err != nil {
@@ -67,6 +70,34 @@ func main() {
 	userControlledRouter := r.Methods(http.MethodGet, http.MethodPost, http.MethodDelete).Subrouter()
 	clientSvc := clients.NewService(cs, scopes)
 	clients.RegisterRoutes(oauthRouter, userControlledRouter, clientSvc)
+
+	//create client id / secret
+	logrus.Info("creating test client with id 'id', secret 'secret' and redirect uri 'http://localhost:8080'")
+	cs.Create(context.Background(), "id", "secret", "http://localhost:8080", "http://example.com", "http://example.com/image", "example client")
+
+	//create token for this client
+	authCode, err := tokenSvc.OauthServer.Manager.GenerateAuthToken(context.Background(), oauth2.Code, &oauth2.TokenGenerateRequest{
+		ClientID:     "id",
+		ClientSecret: "secret",
+		UserID:       "12345",
+		RedirectURI:  "http://localhost:8080",
+		Scope:        "balance:read",
+	})
+	if err != nil {
+		logrus.WithError(err).Fatal("could not generate code")
+	}
+	access, err := tokenSvc.OauthServer.Manager.GenerateAccessToken(context.Background(), oauth2.AuthorizationCode, &oauth2.TokenGenerateRequest{
+		Code:         authCode.GetCode(),
+		ClientID:     "id",
+		ClientSecret: "secret",
+		UserID:       "12345",
+		RedirectURI:  "http://localhost:8080",
+		Scope:        "balance:read",
+	})
+	if err != nil {
+		logrus.WithError(err).Fatal("could not generate token")
+	}
+	logrus.WithField("token", access).Info("generated test access token")
 
 	userControlledRouter.Use(mockAuth.UserAuthorizeMiddleware)
 	userControlledRouter.Use(handlers.RecoveryHandler(),

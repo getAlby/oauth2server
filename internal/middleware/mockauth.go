@@ -17,6 +17,7 @@ const testUserLogin = "login"
 const testUserPassword = "password"
 
 func NewMockAuth() (MockAuth, error) {
+	logrus.Info("mock auth: use lndhub login 'login' and password 'password' ")
 	result := MockAuth{}
 
 	return result, nil
