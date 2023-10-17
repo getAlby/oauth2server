@@ -22,7 +22,22 @@ to access the Alby Wallet API in their name. Possible use-cases include:
 - Allow a 3rd party to fetch your value4value information, for example to inject it in an RSS feed.
 - Allow an application to make payments automatically on your behalf, maybe with some monthly budget.
 
-### Getting started
+### Local development
+
+1. Run the mock server `go run cmd/mock_server/main.go` . The mock server differs from the production server in that it uses an in-memory datastore, it will auto-create client credentials and tokens, uses a mock middleware for user authentication, and will also spin up its own downstream server. 
+2. If you want to create an oauth code/token, you can use the preloaded client credentials `id/secret` and redirect_uri `http://localhost:8080`. You also always need to use the user credentials `login` and `password` as the login and password. 
+
+```
+http -f POST localhost:8081/oauth/authorize\?client_id\=id\&response_type\=code\&redirect_uri\=http://localhost:8080\&scope\=balance:read login=login password=password
+```
+Use the procedure described below to get an access/refresh token pair using the code that is returned in the header of the response.
+
+3. There is also an access/refresh token pair preloaded and logged when the mock server starts up. You can use the access token to make a request to the downstream mock server:
+
+`http localhost:8081/balance Authorization:"Bearer <ACCESS TOKEN (get it from the startup logs)>"`
+
+### Getting started: the hard way
+This is for when you want to test using a setup that resembles production: a PG database, an LNDhub downstream server, and existing user credentials. (This section is to be updated later when moving to new auth system)
 All examples are using [httpie](https://httpie.io)
 - Make a POST request to the oauth server in order to get an access code. This should be made from the browser, as the responds redirects the client back to the client application.
 	```
@@ -33,7 +48,7 @@ All examples are using [httpie](https://httpie.io)
 	- `response_type` should always be `code`.
 	- For the possible `scope`'s, see below. These should be space-seperated (url-encoded space: `%20`).
 	- Other optional form parameters are `code_challenge` and `code_challenge_method`, to be used for pure browser-based and mobile-based apps where the confidentiality of the client secret cannot be guaranteed. See below.
-	- `$login` and `$password` should be your LNDHub login and password.
+	- `$login` and `$password` should be your LNDHub login and password. When you use the regtest instance, this should be an existing login/password from the regtest LNDhub instance.
   The response should be a `302 Found` with the `Location` header equal to the redirect URL with the code in it:
 	`Location: localhost:8080/client_app?code=YOUR_CODE`
   - The `expires_in` parameter (optional) allows you to specify the expiry duration of the token in seconds.
