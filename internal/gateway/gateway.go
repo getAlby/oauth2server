@@ -59,7 +59,8 @@ func InjectJWTAccessToken(token oauth2.TokenInfo, r *http.Request, secret []byte
 	//the request is dispatched immediately, so the tokens can have a short expiry
 	expirySeconds := 60
 	lndhubId := token.GetUserID()
-	lndhubToken, err := generateLNDHubAccessToken(secret, expirySeconds, lndhubId)
+	clientId := token.GetClientID()
+	lndhubToken, err := generateLNDHubAccessToken(secret, expirySeconds, lndhubId, clientId)
 	if err != nil {
 		return err
 	}
@@ -68,14 +69,15 @@ func InjectJWTAccessToken(token oauth2.TokenInfo, r *http.Request, secret []byte
 }
 
 // GenerateAccessToken : Generate Access Token
-func generateLNDHubAccessToken(secret []byte, expiryInSeconds int, userId string) (string, error) {
+func generateLNDHubAccessToken(secret []byte, expiryInSeconds int, userId, clientId string) (string, error) {
 	//convert string to int
 	id, err := strconv.Atoi(userId)
 	if err != nil {
 		return "", err
 	}
 	claims := &LNDhubClaims{
-		ID: int64(id),
+		ID:       int64(id),
+		ClientId: clientId,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Second * time.Duration(expiryInSeconds)).Unix(),
 		},
@@ -92,7 +94,8 @@ func generateLNDHubAccessToken(secret []byte, expiryInSeconds int, userId string
 }
 
 type LNDhubClaims struct {
-	ID        int64 `json:"id"`
-	IsRefresh bool  `json:"isRefresh"`
+	ID        int64  `json:"id"`
+	IsRefresh bool   `json:"isRefresh"`
+	ClientId  string `json:"clientId"`
 	jwt.StandardClaims
 }

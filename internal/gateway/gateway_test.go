@@ -96,3 +96,20 @@ func TestGateway(t *testing.T) {
 	gw2.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusUnauthorized, rec.Result().StatusCode)
 }
+
+func TestGenerateLNDHubToken(t *testing.T) {
+	secret := []byte("secret")
+	expirySeconds := 1
+	clientId := "1"
+	userId := "2"
+	token, err := generateLNDHubAccessToken(secret, expirySeconds, userId, clientId)
+	assert.NoError(t, err)
+	claims := jwt.MapClaims{}
+	_, err = jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
+		return secret, nil
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, clientId, claims["clientId"])
+	assert.Equal(t, userId, fmt.Sprintf("%.0f", claims["id"].(float64)))
+
+}
