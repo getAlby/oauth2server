@@ -59,8 +59,10 @@ func main() {
 		defer tracer.Stop()
 	}
 
-	//todo: init scopes
-	scopes := map[string]string{}
+	scopes, err := tokens.LoadScopes(globalConf.TargetFile)
+	if err != nil {
+		logrus.Fatal(err)
+	}
 
 	//set up PG repositories
 	cs, ts, db, err := repository.InitPGStores()

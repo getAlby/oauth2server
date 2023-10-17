@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"oauth2server/internal/middleware"
+	"os"
 	"strings"
 
 	"github.com/getsentry/sentry-go"
@@ -31,6 +32,24 @@ func RegisterRoutes(r *mux.Router, svc *service) {
 	r.HandleFunc("/oauth/token", svc.TokenHandler)
 	r.HandleFunc("/oauth/scopes", svc.ScopeHandler)
 	r.HandleFunc("/oauth/token/introspect", svc.TokenIntrospectHandler).Methods(http.MethodGet)
+}
+
+// helper func to load the scopes and their descriptions into a map
+func LoadScopes(filename string) (result map[string]string, err error) {
+	result = map[string]string{}
+	tmp := []map[string]string{}
+	targetBytes, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(targetBytes, &tmp)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range tmp {
+		result[entry["scope"]] = entry["description"]
+	}
+	return result, nil
 }
 
 func NewService(cs oauth2.ClientStore, ts oauth2.TokenStore, scopes map[string]string, userAuth server.UserAuthorizationHandler) (result *service, err error) {

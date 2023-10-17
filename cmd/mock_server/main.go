@@ -36,8 +36,10 @@ func main() {
 	}
 
 	r := mux.NewRouter()
-	//todo: init scopes
-	scopes := map[string]string{}
+	scopes, err := tokens.LoadScopes(globalConf.TargetFile)
+	if err != nil {
+		logrus.Fatal(err)
+	}
 
 	oauthRouter := r.NewRoute().Subrouter()
 
