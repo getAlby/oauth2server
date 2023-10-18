@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang-jwt/jwt"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,7 +17,7 @@ func TestJWTAuth(t *testing.T) {
 	rec := httptest.NewRecorder()
 	r, err := http.NewRequest(http.MethodGet, "/", nil)
 	assert.NoError(t, err)
-	jwtToken, err := generateLNDHubAccessToken(secret, claims{
+	jwtToken, err := GenerateJWT(secret, Claims{
 		ID: &testId,
 	})
 	assert.NoError(t, err)
@@ -26,27 +25,9 @@ func TestJWTAuth(t *testing.T) {
 	id, err := j.JWTAuth(rec, r)
 	assert.NoError(t, err)
 	assert.Equal(t, fmt.Sprintf("%d", testId), id)
-	emtpyToken, err := generateLNDHubAccessToken(secret, claims{})
+	emtpyToken, err := GenerateJWT(secret, Claims{})
 	assert.NoError(t, err)
 	r.Header.Set("Authorization", emtpyToken)
 	id, err = j.JWTAuth(rec, r)
 	assert.Error(t, err)
-}
-
-// GenerateAccessToken : Generate Access Token
-func generateLNDHubAccessToken(secret []byte, claims claims) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	t, err := token.SignedString(secret)
-	if err != nil {
-		return "", err
-	}
-
-	return t, nil
-}
-
-type claims struct {
-	ID        *int64 `json:"id"`
-	IsRefresh bool   `json:"isRefresh"`
-	ClientId  string `json:"clientId"`
-	jwt.StandardClaims
 }

@@ -53,3 +53,20 @@ func (j JWTAuth) UserAuthorizeMiddleware(h http.Handler) http.Handler {
 		h.ServeHTTP(w, r)
 	})
 }
+
+func GenerateJWT(secret []byte, claims Claims) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	t, err := token.SignedString(secret)
+	if err != nil {
+		return "", err
+	}
+
+	return t, nil
+}
+
+type Claims struct {
+	ID        *int64 `json:"id"`
+	IsRefresh bool   `json:"isRefresh"`
+	ClientId  string `json:"clientId"`
+	jwt.StandardClaims
+}
