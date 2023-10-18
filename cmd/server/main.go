@@ -73,14 +73,14 @@ func main() {
 	oauthRouter := r.NewRoute().Subrouter()
 
 	//create auth middleware
-	lndhubUserAuth, err := middleware.NewLNDHubUserAuth(globalConf.JWTSecret, globalConf.LndHubUrl)
+	auth, err := middleware.NewJWTAuth(globalConf.JWTSecret)
 	if err != nil {
 		logrus.Fatal(err)
 	}
 	//set up token service
 	//responsible for managing oauth tokens
 	//this service handles the oauth authorization
-	tokenSvc, err := tokens.NewService(cs, ts, scopes, lndhubUserAuth.LNDHubUserAuth)
+	tokenSvc, err := tokens.NewService(cs, ts, scopes, auth.JWTAuth)
 	if err != nil {
 		logrus.Fatal(err)
 	}
@@ -99,7 +99,7 @@ func main() {
 	clientSvc := clients.NewService(clientStore, scopes)
 	clients.RegisterRoutes(oauthRouter, userControlledRouter, clientSvc)
 
-	userControlledRouter.Use(lndhubUserAuth.UserAuthorizeMiddleware)
+	userControlledRouter.Use(auth.UserAuthorizeMiddleware)
 	userControlledRouter.Use(handlers.RecoveryHandler(),
 		func(h http.Handler) http.Handler { return middleware.LoggingMiddleware(h) },
 	)
