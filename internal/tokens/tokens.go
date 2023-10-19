@@ -89,6 +89,9 @@ func (svc *service) TokenHandler(w http.ResponseWriter, r *http.Request) {
 
 	gt, tgr, err := svc.OauthServer.ValidationTokenRequest(r)
 	if err != nil {
+		logrus.WithField("token_request", r).
+			WithError(err).
+			Error("error validating token request")
 		sentry.CaptureException(err)
 		svc.tokenError(w, err)
 		return
@@ -96,14 +99,10 @@ func (svc *service) TokenHandler(w http.ResponseWriter, r *http.Request) {
 
 	ti, err := svc.OauthServer.GetAccessToken(ctx, gt, tgr)
 	if err != nil {
-		sentry.ConfigureScope(func(scope *sentry.Scope) {
-			scope.SetContext("character", map[string]interface{}{
-				"client_id":    tgr.ClientID,
-				"user_id":      tgr.UserID,
-				"scope":        tgr.Scope,
-				"redirect_uri": tgr.RedirectURI,
-			})
-		})
+		logrus.WithField("token_request", r).
+			WithField("tgr", tgr).
+			WithField("gt", gt).WithError(err).
+			Error("error getting access token")
 		sentry.CaptureException(err)
 		svc.tokenError(w, err)
 		return
