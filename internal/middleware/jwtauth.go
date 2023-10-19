@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/golang-jwt/jwt"
@@ -27,6 +28,7 @@ func NewJWTAuth(secret []byte) (JWTAuth, error) {
 func (j JWTAuth) JWTAuth(w http.ResponseWriter, r *http.Request) (userID string, err error) {
 
 	token := r.Header.Get("Authorization")
+	token = strings.TrimPrefix(token, "Bearer ")
 	claims := jwt.MapClaims{}
 	_, err = jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
 		return j.JWTSecret, nil

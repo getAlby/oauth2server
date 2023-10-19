@@ -30,4 +30,8 @@ func TestJWTAuth(t *testing.T) {
 	r.Header.Set("Authorization", emtpyToken)
 	id, err = j.JWTAuth(rec, r)
 	assert.Error(t, err)
+	r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", jwtToken))
+	id, err = j.JWTAuth(rec, r)
+	assert.NoError(t, err)
+	assert.Equal(t, fmt.Sprintf("%d", testId), id)
 }
