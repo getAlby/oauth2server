@@ -96,6 +96,14 @@ func (svc *service) TokenHandler(w http.ResponseWriter, r *http.Request) {
 
 	ti, err := svc.OauthServer.GetAccessToken(ctx, gt, tgr)
 	if err != nil {
+		sentry.ConfigureScope(func(scope *sentry.Scope) {
+			scope.SetContext("character", map[string]interface{}{
+				"client_id":    tgr.ClientID,
+				"user_id":      tgr.UserID,
+				"scope":        tgr.Scope,
+				"redirect_uri": tgr.RedirectURI,
+			})
+		})
 		sentry.CaptureException(err)
 		svc.tokenError(w, err)
 		return
