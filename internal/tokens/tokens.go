@@ -91,7 +91,7 @@ func (svc *service) TokenHandler(w http.ResponseWriter, r *http.Request) {
 	gt, tgr, err := svc.OauthServer.ValidationTokenRequest(r)
 	if err != nil {
 		dump, _ := httputil.DumpRequest(r, true)
-		logrus.WithField("token_request", fmt.Sprintf("%q", dump)).
+		logrus.WithField("token_request", fmt.Sprintf("%q", string(dump))).
 			WithError(err).
 			Error("error validating token request")
 		sentry.CaptureException(err)
@@ -102,7 +102,7 @@ func (svc *service) TokenHandler(w http.ResponseWriter, r *http.Request) {
 	ti, err := svc.OauthServer.GetAccessToken(ctx, gt, tgr)
 	if err != nil {
 		dump, _ := httputil.DumpRequest(r, true)
-		logrus.WithField("token_request", dump).
+		logrus.WithField("token_request", string(dump)).
 			WithField("gt", gt).WithError(err).
 			Error("error getting access token")
 		sentry.CaptureException(err)
