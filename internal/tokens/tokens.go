@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"oauth2server/internal/middleware"
 	"os"
 	"strings"
@@ -89,7 +90,8 @@ func (svc *service) TokenHandler(w http.ResponseWriter, r *http.Request) {
 
 	gt, tgr, err := svc.OauthServer.ValidationTokenRequest(r)
 	if err != nil {
-		logrus.WithField("token_request", r).
+		dump, _ := httputil.DumpRequest(r, true)
+		logrus.WithField("token_request", fmt.Sprintf("%q", dump)).
 			WithError(err).
 			Error("error validating token request")
 		sentry.CaptureException(err)
@@ -99,8 +101,8 @@ func (svc *service) TokenHandler(w http.ResponseWriter, r *http.Request) {
 
 	ti, err := svc.OauthServer.GetAccessToken(ctx, gt, tgr)
 	if err != nil {
-		logrus.WithField("token_request", r).
-			WithField("tgr", tgr).
+		dump, _ := httputil.DumpRequest(r, true)
+		logrus.WithField("token_request", dump).
 			WithField("gt", gt).WithError(err).
 			Error("error getting access token")
 		sentry.CaptureException(err)
