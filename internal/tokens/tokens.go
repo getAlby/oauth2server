@@ -105,7 +105,6 @@ func (svc *service) TokenHandler(w http.ResponseWriter, r *http.Request) {
 		logrus.WithField("token_request", string(dump)).
 			WithField("gt", gt).WithError(err).
 			Error("error getting access token")
-		sentry.CaptureException(err)
 		svc.tokenError(w, err)
 		return
 	}
