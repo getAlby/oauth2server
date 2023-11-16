@@ -106,6 +106,7 @@ func (svc *service) TokenHandler(w http.ResponseWriter, r *http.Request) {
 		dump, _ := httputil.DumpRequest(r, true)
 		logrus.WithField("token_request", string(dump)).
 			WithField("form_data", string(jsonData)).
+			WithField("client_id", tgr.ClientID).
 			WithField("gt", gt).WithError(err).
 			Error("error getting access token")
 		svc.tokenError(w, err)
