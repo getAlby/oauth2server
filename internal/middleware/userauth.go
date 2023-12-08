@@ -87,10 +87,12 @@ func authenticateUser(r *http.Request, lndhubUrl string) (token string, err erro
 	//authenticate user against lndhub
 	resp, err := http.PostForm(fmt.Sprintf("%s/auth", lndhubUrl), r.Form)
 	if err != nil {
+		logrus.WithField("login", login).Errorf("Cannot authenticate user. post failed (login: %s error: %v )", login, err.Error())
 		return "", fmt.Errorf("Error authenticating user %s", err.Error())
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Cannot authenticate user, login or password wrong.")
+		logrus.WithField("login", login).Errorf("Cannot authenticate user, login or password wrong. (login: %s status: %v)", login, resp.StatusCode)
+		return "", fmt.Errorf("Cannot authenticate user, login or password wrong. (login: %s)", login)
 	}
 	//return access code
 	tokenResponse := &LNDHubTokenResponse{}
