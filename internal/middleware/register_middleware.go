@@ -3,8 +3,6 @@ package middleware
 import (
 	"context"
 	"net/http"
-	"oauth2server/models"
-	"oauth2server/service"
 	"strings"
 
 	"github.com/felixge/httpsnoop"
@@ -14,11 +12,16 @@ import (
 )
 
 // panic recover, logging, Sentry middlewares
-func RegisterMiddleware(h http.Handler, conf *service.Config) http.Handler {
+func RegisterMiddleware(h http.Handler) http.Handler {
 	h = handlers.RecoveryHandler()(h)
 	h = LoggingMiddleware(h)
 	h = sentryhttp.New(sentryhttp.Options{}).Handle(h)
 	return h
+}
+
+type LogTokenInfo struct {
+	UserId   string
+	ClientId string
 }
 
 func LoggingMiddleware(next http.Handler) http.Handler {
@@ -37,7 +40,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		entry = entry.WithField("user_agent", r.UserAgent())
 		entry = entry.WithField("x_user_agent", r.Header.Get("X-User-Agent"))
 		entry = entry.WithField("uri", r.URL.Path)
-		lti := &models.LogTokenInfo{}
+		lti := &LogTokenInfo{}
 		r = r.WithContext(context.WithValue(r.Context(), "token_info", lti))
 		//this already calls next.ServeHttp
 		m := httpsnoop.CaptureMetrics(next, w, r)
@@ -46,7 +49,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		entry = entry.WithField("bytes_out", m.Written)
 		tokenInfo := r.Context().Value("token_info")
 		if tokenInfo != nil {
-			logTokenInfo := tokenInfo.(*models.LogTokenInfo)
+			logTokenInfo := tokenInfo.(*LogTokenInfo)
 			entry = entry.WithField("user_id", logTokenInfo.UserId)
 			entry = entry.WithField("client_id", logTokenInfo.ClientId)
 		}

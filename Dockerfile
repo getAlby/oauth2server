@@ -13,7 +13,7 @@ COPY . .
 
 # Build the application
 RUN apk add build-base
-RUN go build -o main
+RUN go build -o main cmd/server/main.go
 
 # Start a new, final image to reduce size.
 FROM alpine as final

@@ -1,14 +1,6 @@
-package models
+package clients
 
-import (
-	"github.com/golang-jwt/jwt"
-	"gorm.io/gorm"
-)
-
-type LogTokenInfo struct {
-	UserId string
-	ClientId string
-}
+import "gorm.io/gorm"
 
 type ListClientsResponse struct {
 	Domain   string            `json:"domain,omitempty"`
@@ -42,9 +34,4 @@ type CreateClientResponse struct {
 	ImageUrl     string `json:"imageUrl"`
 	ClientId     string `json:"clientId"`
 	ClientSecret string `json:"clientSecret,omitempty"`
-}
-type LNDhubClaims struct {
-	ID        int64 `json:"id"`
-	IsRefresh bool  `json:"isRefresh"`
-	jwt.StandardClaims
 }

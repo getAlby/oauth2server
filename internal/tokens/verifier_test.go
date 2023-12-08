@@ -1,4 +1,4 @@
-package integrationtests
+package tokens
 
 import (
 	"crypto/sha256"

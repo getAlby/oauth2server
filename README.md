@@ -1,4 +1,15 @@
-This service consists out of 2 pieces: an OAuth server issuing tokens and an API Gateway that is secured by these tokens.
+# Summary
+This service consists out of 3 main packages:
+
+- `internal/clients`, which provides CRUD operations for oauth _clients_
+- `internal/tokens`, which provides a wrapper around https://github.com/go-oauth2/oauth2. It is linked with the clients package by the same database objects.
+- `internal/gateway`, which proxies API requests, it checks the OAuth tokens and forwards the requests to an origin server. It's linked to the tokens package by the `checkTokenFunc`.
+
+Supporting packages
+
+- The middleware package defines some logging middleware and a user authentication middleware, which is used to authenticate the user that wants to CRUD oauth tokens.
+- The repository package initializes Postgres databases to be used as datastores. In-memory databases are also implemented in their respective packages (clients/tokens)
+
 The service is supposed to be run together with lndhub.go, but could support multiple backends of any kind.
 
 Deployed on regtest at `https://api.regtest.getalby.com`.
@@ -11,7 +22,22 @@ to access the Alby Wallet API in their name. Possible use-cases include:
 - Allow a 3rd party to fetch your value4value information, for example to inject it in an RSS feed.
 - Allow an application to make payments automatically on your behalf, maybe with some monthly budget.
 
-### Getting started
+### Local development
+
+1. Run the mock server `go run cmd/mock_server/main.go` . The mock server differs from the production server in that it uses an in-memory datastore, it will auto-create client credentials and tokens, uses a mock middleware for user authentication, and will also spin up its own downstream server. 
+2. If you want to create an oauth code/token, you can use the preloaded client credentials `id/secret` and redirect_uri `http://localhost:8080`. You also always need to use the user credentials `login` and `password` as the login and password. 
+
+```
+http -f POST localhost:8081/oauth/authorize\?client_id\=id\&response_type\=code\&redirect_uri\=http://localhost:8080\&scope\=balance:read login=login password=password
+```
+Use the procedure described below to get an access/refresh token pair using the code that is returned in the header of the response.
+
+3. There is also an access/refresh token pair preloaded and logged when the mock server starts up. You can use the access token to make a request to the downstream mock server:
+
+`http localhost:8081/balance Authorization:"Bearer <ACCESS TOKEN (get it from the startup logs)>"`
+
+### Getting started: the hard way
+This is for when you want to test using a setup that resembles production: a PG database, an LNDhub downstream server, and existing user credentials. (This section is to be updated later when moving to new auth system)
 All examples are using [httpie](https://httpie.io)
 - Make a POST request to the oauth server in order to get an access code. This should be made from the browser, as the responds redirects the client back to the client application.
 	```
@@ -22,7 +48,7 @@ All examples are using [httpie](https://httpie.io)
 	- `response_type` should always be `code`.
 	- For the possible `scope`'s, see below. These should be space-seperated (url-encoded space: `%20`).
 	- Other optional form parameters are `code_challenge` and `code_challenge_method`, to be used for pure browser-based and mobile-based apps where the confidentiality of the client secret cannot be guaranteed. See below.
-	- `$login` and `$password` should be your LNDHub login and password.
+	- `$login` and `$password` should be your LNDHub login and password. When you use the regtest instance, this should be an existing login/password from the regtest LNDhub instance.
   The response should be a `302 Found` with the `Location` header equal to the redirect URL with the code in it:
 	`Location: localhost:8080/client_app?code=YOUR_CODE`
   - The `expires_in` parameter (optional) allows you to specify the expiry duration of the token in seconds.
@@ -70,6 +96,21 @@ Based on the configuration of the instance run in production by Alby
 | GET `/invoices/{payment_hash}`  | `invoices:create`  | Get details about a specific invoice by payment hash |
 | GET `/balance`  | `balance:read`  | Get account balance |
 | GET `/user/value4value`  | `account:read`  | Read user's Lightning Address and keysend information|
+
+### Token Introspection
+- To view what all scopes your token has, client id and redirect URL, you can make a get request like the following with your access token:
+  ```
+  http https://api.regtest.getalby.com/oauth/token/introspect Authorization:"Bearer $your_access_token"
+
+  HTTP/1.1 200 OK
+  {
+    "client_id": "test_client",
+    "redirect_uri": "http://localhost:8080",
+    "scopes": {
+      "balance:read": "Read your account summary"
+    }
+  }
+  ```
 
 ## API Gateway
 - Use the access token to make a request to the LNDhub API:
