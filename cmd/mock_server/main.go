@@ -47,15 +47,23 @@ func main() {
 
 	oauthRouter := r.NewRoute().Subrouter()
 
-	//use a mocking authentication middleware
-	mockAuth, err := middleware.NewMockAuth()
+	//here we can use the same jwt middleware
+	//we simply mint & log a JWT token the developer
+	//can use to make authorization requests
+	auth, err := middleware.NewJWTAuth(globalConf.JWTSecret)
 	if err != nil {
 		logrus.Fatal(err)
 	}
+	testUserId := int64(12345)
+	testJwt, err := middleware.GenerateJWT(globalConf.JWTSecret, middleware.Claims{ID: &testUserId})
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	logrus.Infof("Mock auth: use the following JWT token to make authorization requests: %s", testJwt)
 	//set up in-memory stores
 	cs := clients.NewInMem()
 	ts := tokens.NewInmemStore()
-	tokenSvc, err := tokens.NewService(cs, ts, scopes, mockAuth.MockAuth)
+	tokenSvc, err := tokens.NewService(cs, ts, scopes, auth.JWTAuth)
 	if err != nil {
 		logrus.Fatal(err)
 	}
@@ -81,7 +89,7 @@ func main() {
 	authCode, err := tokenSvc.OauthServer.Manager.GenerateAuthToken(context.Background(), oauth2.Code, &oauth2.TokenGenerateRequest{
 		ClientID:     "id",
 		ClientSecret: "secret",
-		UserID:       "12345",
+		UserID:       fmt.Sprintf("%d", testUserId),
 		RedirectURI:  "http://localhost:8080",
 		Scope:        "balance:read",
 	})
@@ -101,7 +109,7 @@ func main() {
 	}
 	logrus.WithField("token", access).Info("generated test access token")
 
-	userControlledRouter.Use(mockAuth.UserAuthorizeMiddleware)
+	userControlledRouter.Use(auth.UserAuthorizeMiddleware)
 	userControlledRouter.Use(handlers.RecoveryHandler(),
 		func(h http.Handler) http.Handler { return middleware.LoggingMiddleware(h) },
 	)
