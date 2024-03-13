@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/felixge/httpsnoop v1.0.3
-	github.com/getAlby/go-oauth2-gorm v0.5.1
+	github.com/getAlby/go-oauth2-gorm v0.5.2
 	github.com/go-oauth2/oauth2/v4 v4.5.1
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/jackc/pgx/v5 v5.3.1

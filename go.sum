@@ -1087,8 +1087,8 @@ github.com/garyburd/redigo v0.0.0-20150301180006-535138d7bcd7/go.mod h1:NR3MbYis
 github.com/garyburd/redigo v1.6.3/go.mod h1:rTb6epsqigu3kYKBnaF028A7Tf/Aw5s0cqA47doKKqw=
 github.com/gavv/httpexpect v2.0.0+incompatible h1:1X9kcRshkSKEjNJJxX9Y9mQ5BRfbxU5kORdjhlA1yX8=
 github.com/gavv/httpexpect v2.0.0+incompatible/go.mod h1:x+9tiU1YnrOvnB725RkpoLv1M62hOWzwo5OXotisrKc=
-github.com/getAlby/go-oauth2-gorm v0.5.1 h1:q/TS71obn43c9b9FhApk6uXGZiMgaG+aKzCpPS3jOdM=
-github.com/getAlby/go-oauth2-gorm v0.5.1/go.mod h1:cUokQwQW7TqnPVg/KU0iPGJICaFwbfrQFD7amyLTBTY=
+github.com/getAlby/go-oauth2-gorm v0.5.2 h1:s3NE+JJvz0pvfVDbx/BR9IkRqDhhYnZWIerlmsmU30w=
+github.com/getAlby/go-oauth2-gorm v0.5.2/go.mod h1:cUokQwQW7TqnPVg/KU0iPGJICaFwbfrQFD7amyLTBTY=
 github.com/getkin/kin-openapi v0.76.0/go.mod h1:660oXbgy5JFMKreazJaQTw7o+X00qeSyhcnluiMv+Xg=
 github.com/getsentry/raven-go v0.2.0/go.mod h1:KungGk8q33+aIAZUIVWZDr2OfAEBsO49PX4NzFV5kcQ=
 github.com/getsentry/sentry-go v0.13.0 h1:20dgTiUSfxRB/EhMPtxcL9ZEbM1ZdR+W/7f7NWD+xWo=
