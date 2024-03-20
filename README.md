@@ -25,14 +25,15 @@ to access the Alby Wallet API in their name. Possible use-cases include:
 ### Local development
 
 1. Run the mock server `go run cmd/mock_server/main.go` . The mock server differs from the production server in that it uses an in-memory datastore, it will auto-create client credentials and tokens, uses a mock middleware for user authentication, and will also spin up its own downstream server. 
-2. If you want to create an oauth code/token, you can use the preloaded client credentials `id/secret` and redirect_uri `http://localhost:8080`. You also always need to use the user credentials `login` and `password` as the login and password. 
+2. If you want to create an oauth code/token, you can use the preloaded client credentials `id/secret` and redirect_uri `http://localhost:8080`. You need a valid JWT token which can be encoded using the `JWT_SECRET` from the env. The content of the JWT token should have a payload like `{id: 214, identifier: "B07KQWNvGAiq2kGWU3kz"}` (LNDHub user id and identifier)
 
 ```
-http -f POST localhost:8081/oauth/authorize\?client_id\=id\&response_type\=code\&redirect_uri\=http://localhost:8080\&scope\=balance:read login=login password=password
+http -f POST http://localhost:8081/oauth/authorize\?client_id=id\&response_type=code\&redirect_uri=http://localhost:8080\&scope\=account:read%20invoices:create%20invoices:read%20transactions:read%20balance:read%20payments:send\&expires_in\=185715992 'Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJkYXRhIjp7ImlkIjoyMTQsImlkZW50aWZpZXIiOiJCMDdLUVdOdkdBaXEya0dXVTNreiJ9LCJleHAiOjE3MTAzMTY3OTYsImlhdCI6MTcxMDMxNjQ5NiwiaXNzIjoiZ2V0YWxieWNvbSIsImlkIjoyMTQsImlkZW50aWZpZXIiOiJCMDdLUVdOdkdBaXEya0dXVTNreiJ9.hhB2C40GAVrIctT2vs19Fff9vQdZR6BYdAmiuoYPs5s'
 ```
+
 Use the procedure described below to get an access/refresh token pair using the code that is returned in the header of the response.
 
-3. There is also an access/refresh token pair preloaded and logged when the mock server starts up. You can use the access token to make a request to the downstream mock server:
+1. There is also an access/refresh token pair preloaded and logged when the mock server starts up. You can use the access token to make a request to the downstream mock server:
 
 `http localhost:8081/balance Authorization:"Bearer <ACCESS TOKEN (get it from the startup logs)>"`
 
