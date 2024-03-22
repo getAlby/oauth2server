@@ -79,7 +79,7 @@ func isUriValid(clientHost, redirectHost string) bool {
 		if clientHostParts[i] == "*" {
 			continue
 		}
-		if clientHostParts[i] != redirectHostParts[i] {
+		if redirectHostParts[i] != clientHostParts[i] {
 			return false
 		}
 	}
