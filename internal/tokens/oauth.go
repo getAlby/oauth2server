@@ -90,21 +90,18 @@ func isUriValid(clientHost, redirectHost string) bool {
 func checkRedirectUriDomain(baseURI, redirectURI string) error {
 	parsedClientUri, err := url.Parse(baseURI)
 	if err != nil {
-			return err
+		return err
 	}
 	parsedRedirect, err := url.Parse(redirectURI)
 	if err != nil {
-			return err
+		return err
 	}
-
 	clientHost := parsedClientUri.Host
 	redirectHost := parsedRedirect.Host
-
-	if parsedClientUri.Scheme == parsedRedirect.Scheme && isUriValid(clientHost, redirectHost) {
-		return nil
+	if parsedClientUri.Scheme != parsedRedirect.Scheme || !isUriValid(clientHost, redirectHost) {
+		err = fmt.Errorf("wrong redirect uri, provided: [ scheme: %s, host: %s ], expected: [ scheme: %s, host: %s ]", parsedRedirect.Scheme, parsedRedirect.Host, parsedClientUri.Scheme, parsedClientUri.Host)
+		sentry.CaptureException(err)
+		return err
 	}
-
-	err = fmt.Errorf("wrong redirect uri, provided: [ scheme: %s, host: %s ], expected: [ scheme: %s, host: %s ]", parsedRedirect.Scheme, parsedRedirect.Host, parsedClientUri.Scheme, parsedClientUri.Host)
-	sentry.CaptureException(err)
-	return err
+	return nil
 }
