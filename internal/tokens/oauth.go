@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/getsentry/sentry-go"
@@ -66,19 +67,44 @@ func combinedClientInfoHandler(r *http.Request) (clientID, clientSecret string, 
 	return
 }
 
+func isUriValid(clientHost, redirectHost string) bool {
+	clientHostParts := strings.Split(clientHost, ".")
+	redirectHostParts := strings.Split(redirectHost, ".")
+
+	if len(clientHostParts) != len(redirectHostParts) {
+		return false
+	}
+
+	for i := range clientHostParts {
+		if clientHostParts[i] == "*" {
+			continue
+		}
+		if clientHostParts[i] != redirectHostParts[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
 func checkRedirectUriDomain(baseURI, redirectURI string) error {
 	parsedClientUri, err := url.Parse(baseURI)
 	if err != nil {
-		return err
+			return err
 	}
 	parsedRedirect, err := url.Parse(redirectURI)
 	if err != nil {
-		return err
+			return err
 	}
-	if parsedClientUri.Host != parsedRedirect.Host || parsedClientUri.Scheme != parsedRedirect.Scheme {
-		err = fmt.Errorf("Wrong Redirect URI. Provided: [ Scheme: %s, Host: %s ], Expected: [ Scheme: %s, Host: %s ]", parsedRedirect.Scheme, parsedRedirect.Host, parsedClientUri.Scheme, parsedClientUri.Host)
-		sentry.CaptureException(err)
-		return err
+
+	clientHost := parsedClientUri.Hostname()
+	redirectHost := parsedRedirect.Hostname()
+
+	if parsedClientUri.Scheme == parsedRedirect.Scheme && isUriValid(clientHost, redirectHost) {
+		return nil
 	}
-	return nil
+
+	err = fmt.Errorf("wrong redirect uri, provided: [ scheme: %s, host: %s ], expected: [ scheme: %s, host: %s ]", parsedRedirect.Scheme, parsedRedirect.Host, parsedClientUri.Scheme, parsedClientUri.Host)
+	sentry.CaptureException(err)
+	return err
 }
