@@ -92,6 +92,33 @@ func TestDomainRedirects(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, rec.Result().StatusCode, http.StatusFound)
 
+	// Test localhost domain
+	{
+		testClient.Domain = "http://localhost:8080"
+		//setup test service
+		ts = NewInmemStore()
+		tokenSvc, err = NewService(MockClientStore{}, ts, testScopes, mockAuthorize)
+		assert.NoError(t, err)
+	
+		// Test incorrect domain
+		redirect := "http://localhost:8081"
+		rec, _ = fetchCode(testClient.ID, redirect, "balance:read", tokenSvc.AuthorizationHandler)
+		assert.NoError(t, err)
+		assert.Equal(t, rec.Result().StatusCode, http.StatusBadRequest)
+		
+		// Test incorrect scheme
+		redirect = "https://localhost:8080"
+		rec, _ = fetchCode(testClient.ID, redirect, "balance:read", tokenSvc.AuthorizationHandler)
+		assert.NoError(t, err)
+		assert.Equal(t, rec.Result().StatusCode, http.StatusBadRequest)
+	
+		// Test valid domain
+		redirect = "http://localhost:8080"
+		rec, err = fetchCode(testClient.ID, redirect, "balance:read", tokenSvc.AuthorizationHandler)
+		assert.NoError(t, err)
+		assert.Equal(t, rec.Result().StatusCode, http.StatusFound)
+	}
+
 	// Test Wildcard Domains
 
 	testClient.Domain = "http://*.domain.com"

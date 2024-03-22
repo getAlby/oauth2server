@@ -97,8 +97,8 @@ func checkRedirectUriDomain(baseURI, redirectURI string) error {
 			return err
 	}
 
-	clientHost := parsedClientUri.Hostname()
-	redirectHost := parsedRedirect.Hostname()
+	clientHost := parsedClientUri.Host
+	redirectHost := parsedRedirect.Host
 
 	if parsedClientUri.Scheme == parsedRedirect.Scheme && isUriValid(clientHost, redirectHost) {
 		return nil
