@@ -11,7 +11,6 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/go-oauth2/oauth2/v4"
-	"github.com/go-oauth2/oauth2/v4/errors"
 	oauthErrors "github.com/go-oauth2/oauth2/v4/errors"
 	"github.com/go-oauth2/oauth2/v4/server"
 	"github.com/gorilla/mux"
@@ -19,7 +18,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var CONTEXT_ID_KEY string = "ID"
+type ContextKey string
+const CONTEXT_ID_KEY ContextKey = "ID"
 
 type service struct {
 	//todo: don't expose oauthserver for code cleanliness
@@ -184,13 +184,13 @@ func (svc *service) token(w http.ResponseWriter, data map[string]interface{}, he
 	return json.NewEncoder(w).Encode(data)
 }
 
-func (svc *service) InternalErrorHandler(err error) (re *errors.Response) {
+func (svc *service) InternalErrorHandler(err error) (re *oauthErrors.Response) {
 	//workaround to not show "sql: no rows in result set" to user
 	sentry.CaptureException(err)
 	description := oauthErrors.Descriptions[err]
 	statusCode := oauthErrors.StatusCodes[err]
 	if description != "" && statusCode != 0 {
-		return &errors.Response{
+		return &oauthErrors.Response{
 			Error:       fmt.Errorf(description),
 			ErrorCode:   statusCode,
 			Description: description,
@@ -199,7 +199,7 @@ func (svc *service) InternalErrorHandler(err error) (re *errors.Response) {
 			Header:      map[string][]string{},
 		}
 	}
-	return &errors.Response{
+	return &oauthErrors.Response{
 		Error:       err,
 		ErrorCode:   0,
 		Description: "",
@@ -218,11 +218,11 @@ func preRedirectErrorHandler(w http.ResponseWriter, r *server.AuthorizeRequest, 
 func (svc *service) AuthorizeScopeHandler(w http.ResponseWriter, r *http.Request) (scope string, err error) {
 	requestedScope := r.FormValue("scope")
 	if requestedScope == "" {
-		return "", fmt.Errorf("Empty scope is not allowed")
+		return "", fmt.Errorf("empty scope is not allowed")
 	}
 	for _, scope := range strings.Split(requestedScope, " ") {
 		if _, found := svc.scopes[scope]; !found {
-			err = fmt.Errorf("Scope not allowed: %s", scope)
+			err = fmt.Errorf("scope not allowed: %s", scope)
 			sentry.CaptureException(err)
 			return "", err
 		}

@@ -37,7 +37,7 @@ func (j JWTAuth) JWTAuth(w http.ResponseWriter, r *http.Request) (userID string,
 		return "", err
 	}
 	if claims["id"] == nil {
-		return "", fmt.Errorf("Cannot authenticate user, token does not contain user id")
+		return "", fmt.Errorf("cannot authenticate user, token does not contain user id")
 	}
 	return fmt.Sprintf("%.0f", claims["id"].(float64)), nil
 }

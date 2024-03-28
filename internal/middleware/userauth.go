@@ -11,7 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var CONTEXT_ID_KEY string = "ID"
+type ContextKey string
+const CONTEXT_ID_KEY ContextKey = "ID"
 
 type LNDHubUserAuth struct {
 	JWTSecret []byte
@@ -43,7 +44,7 @@ func (l LNDHubUserAuth) LNDHubUserAuth(w http.ResponseWriter, r *http.Request) (
 		return "", err
 	}
 	if claims["id"] == nil {
-		return "", fmt.Errorf("Cannot authenticate user, token does not contain user id")
+		return "", fmt.Errorf("cannot authenticate user, token does not contain user id")
 	}
 	return fmt.Sprintf("%.0f", claims["id"].(float64)), nil
 }
@@ -72,33 +73,33 @@ func authenticateUser(r *http.Request, lndhubUrl string) (token string, err erro
 		r.Form.Add("password", password)
 	}
 	if err != nil {
-		return "", fmt.Errorf("Error parsing form data %s", err.Error())
+		return "", fmt.Errorf("error parsing form data %s", err.Error())
 	}
 	login = r.Form.Get("login")
 	password = r.Form.Get("password")
 
 	if login == "" && password == "" {
-		return "", fmt.Errorf("Cannot authenticate user, form data missing.")
+		return "", fmt.Errorf("cannot authenticate user, form data missing")
 	}
 
 	if login == "" || password == "" {
-		return "", fmt.Errorf("Cannot authenticate user, login or password missing.")
+		return "", fmt.Errorf("cannot authenticate user, login or password missing")
 	}
 	//authenticate user against lndhub
 	resp, err := http.PostForm(fmt.Sprintf("%s/auth", lndhubUrl), r.Form)
 	if err != nil {
 		logrus.WithField("login", login).Errorf("Cannot authenticate user. post failed (login: %s error: %v )", login, err.Error())
-		return "", fmt.Errorf("Error authenticating user %s", err.Error())
+		return "", fmt.Errorf("error authenticating user %s", err.Error())
 	}
 	if resp.StatusCode != http.StatusOK {
 		logrus.WithField("login", login).Errorf("Cannot authenticate user, login or password wrong. (login: %s status: %v)", login, resp.StatusCode)
-		return "", fmt.Errorf("Cannot authenticate user, login or password wrong. (login: %s)", login)
+		return "", fmt.Errorf("cannot authenticate user, login or password wrong. (login: %s)", login)
 	}
 	//return access code
 	tokenResponse := &LNDHubTokenResponse{}
 	err = json.NewDecoder(resp.Body).Decode(tokenResponse)
 	if err != nil {
-		return "", fmt.Errorf("Error authenticating user %s", err.Error())
+		return "", fmt.Errorf("error authenticating user %s", err.Error())
 	}
 	return tokenResponse.AccessToken, nil
 }

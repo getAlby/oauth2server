@@ -19,6 +19,9 @@ func RegisterMiddleware(h http.Handler) http.Handler {
 	return h
 }
 
+type TokenKey string
+const TOKEN_INFO_KEY TokenKey = "token_info"
+
 type LogTokenInfo struct {
 	UserId   string
 	ClientId string
@@ -41,13 +44,13 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		entry = entry.WithField("x_user_agent", r.Header.Get("X-User-Agent"))
 		entry = entry.WithField("uri", r.URL.Path)
 		lti := &LogTokenInfo{}
-		r = r.WithContext(context.WithValue(r.Context(), "token_info", lti))
+		r = r.WithContext(context.WithValue(r.Context(), TOKEN_INFO_KEY, lti))
 		//this already calls next.ServeHttp
 		m := httpsnoop.CaptureMetrics(next, w, r)
 		entry = entry.WithField("latency", m.Duration.Seconds())
 		entry = entry.WithField("status", m.Code)
 		entry = entry.WithField("bytes_out", m.Written)
-		tokenInfo := r.Context().Value("token_info")
+		tokenInfo := r.Context().Value(TOKEN_INFO_KEY)
 		if tokenInfo != nil {
 			logTokenInfo := tokenInfo.(*LogTokenInfo)
 			entry = entry.WithField("user_id", logTokenInfo.UserId)
