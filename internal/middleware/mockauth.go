@@ -33,20 +33,20 @@ func (l MockAuth) MockAuth(w http.ResponseWriter, r *http.Request) (userID strin
 		r.Form.Add("password", password)
 	}
 	if err != nil {
-		return "", fmt.Errorf("Error parsing form data %s", err.Error())
+		return "", fmt.Errorf("error parsing form data %s", err.Error())
 	}
 	login = r.Form.Get("login")
 	password = r.Form.Get("password")
 
 	if login == "" && password == "" {
-		return "", fmt.Errorf("Cannot authenticate user, form data missing.")
+		return "", fmt.Errorf("cannot authenticate user, form data missing")
 	}
 
 	if login == "" || password == "" {
-		return "", fmt.Errorf("Cannot authenticate user, login or password missing.")
+		return "", fmt.Errorf("cannot authenticate user, login or password missing")
 	}
 	if !(login == testUserLogin && password == testUserPassword) {
-		return "", fmt.Errorf("mock auth: cannot authenticate user, login or password wrong.")
+		return "", fmt.Errorf("mock auth: cannot authenticate user, login or password wrong")
 	}
 	return testUserId, nil
 }

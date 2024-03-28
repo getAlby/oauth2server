@@ -23,7 +23,8 @@ const (
 	ClientSecretLength = 20
 )
 
-var CONTEXT_ID_KEY string = "ID"
+type ContextKey string
+const CONTEXT_ID_KEY ContextKey = "ID"
 
 type Service struct {
 	cs     ClientStore
