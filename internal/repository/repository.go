@@ -33,7 +33,7 @@ func InitPGStores() (clientStore *oauth2gorm.ClientStore, tokenStore *oauth2gorm
 		if err != nil {
 			return nil, nil, nil, err
 		}
-		db, err = gormtrace.Open(postgres.New(postgres.Config{Conn: sqlDb}), &gorm.Config{})
+		db, err = gormtrace.Open(postgres.New(postgres.Config{Conn: sqlDb}), &gorm.Config{}, gormtrace.WithServiceName("oauth2server"))
 		if err != nil {
 			return nil, nil, nil, err
 		}
