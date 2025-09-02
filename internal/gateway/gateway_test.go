@@ -117,8 +117,8 @@ func TestGateway(t *testing.T) {
 	req.Header.Set("Authorization", testToken)
 	assert.NoError(t, err)
 	rec = httptest.NewRecorder()
-	gw5 := gateways[4]
-	gw5.ServeHTTP(rec, req)
+	gw4 := gateways[3]
+	gw4.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusUnauthorized, rec.Result().StatusCode)
 
 	// make request to allowUnauthorized endpoint with correct token
@@ -128,8 +128,8 @@ func TestGateway(t *testing.T) {
 	req.Header.Set("Authorization", testToken)
 	assert.NoError(t, err)
 	rec = httptest.NewRecorder()
-	gw4 := gateways[3]
-	gw4.ServeHTTP(rec, req)
+	gw5 := gateways[4]
+	gw5.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	// assert that we get a response from the right backend
 	assert.Equal(t, originServerMsg, rec.Body.String())

@@ -12,10 +12,8 @@
 		"scope": "invoices:read"
 	},
 	{
-		"matchRoute": "/invoices/outgoing",
+		"matchRoute": "/unauth",
 		"origin": "http://localhost:8082",
-		"description": "Read your invoice history, get realtime updates on invoices.",
-		"scope": "transactions:read",
     "allowUnauthorized": true
 	},
 	{
@@ -26,8 +24,10 @@
     "allowUnauthorized": true
 	},
 	{
-		"matchRoute": "/unauth",
+		"matchRoute": "/invoices/outgoing",
 		"origin": "http://localhost:8082",
+		"description": "Read your invoice history, get realtime updates on invoices.",
+		"scope": "transactions:read",
     "allowUnauthorized": true
 	}
 ]
