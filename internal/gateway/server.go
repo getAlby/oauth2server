@@ -22,19 +22,26 @@ var errorResponses = map[string]int{
 }
 
 type OriginServer struct {
-	Origin         string `json:"origin,omitempty"`
-	proxy          http.Handler
-	Scope          string `json:"scope"`
-	MatchRoute     string `json:"matchRoute"`
-	Method         string `json:"method"`
-	Description    string `json:"description"`
-	CheckTokenFunc func(context.Context, string) (oauth2.TokenInfo, error)
-	JWTInjectFunc  func(ti oauth2.TokenInfo, r *http.Request) error
+	Origin            string `json:"origin,omitempty"`
+	proxy             http.Handler
+	Scope             string `json:"scope"`
+	MatchRoute        string `json:"matchRoute"`
+	Method            string `json:"method"`
+	Description       string `json:"description"`
+	CheckTokenFunc    func(context.Context, string) (oauth2.TokenInfo, error)
+	JWTInjectFunc     func(ti oauth2.TokenInfo, r *http.Request) error
+	AllowUnauthorized bool   `json:"allowUnauthorized"`
 }
 
 func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	//check authorization
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+
+	if token == "" && origin.AllowUnauthorized {
+		origin.proxy.ServeHTTP(w, r)
+		return
+	}
+
 	tokenInfo, err := origin.CheckTokenFunc(r.Context(), token)
 	if err != nil {
 		if status, found := errorResponses[err.Error()]; found {
