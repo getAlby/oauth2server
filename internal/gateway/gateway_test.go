@@ -61,7 +61,7 @@ func TestGateway(t *testing.T) {
 
 	gateways, err := InitGateways("test_targets.json", testTokenFunc, testJWTSecret)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(gateways))
+	assert.Equal(t, 3, len(gateways))
 	//make API request
 	req, err := http.NewRequest(http.MethodGet, "/balance", nil)
 	req.Header.Set("Authorization", testToken)
@@ -95,6 +95,19 @@ func TestGateway(t *testing.T) {
 	gw2 := gateways[1]
 	gw2.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusUnauthorized, rec.Result().StatusCode)
+
+	//make request with token for wrong scope, assert that this fails
+	req, err = http.NewRequest(http.MethodGet, "/unauth", nil)
+	assert.NoError(t, err)
+	rec = httptest.NewRecorder()
+	gw3 := gateways[2]
+	gw3.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	//assert that we get a response from the right backend
+	assert.Equal(t, originServerMsg, rec.Body.String())
+	//assert that the token is empty
+	token = <-jwtChan
+	assert.Empty(t, token)
 }
 
 func TestGenerateLNDHubToken(t *testing.T) {
