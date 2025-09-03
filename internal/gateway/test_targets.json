@@ -16,6 +16,6 @@
 		"origin": "http://localhost:8082",
 		"description": "Read your channel provider details.",
 		"scope": "account:read",
-    "allowPublicAccess": true
+		"allowPublicAccess": true
 	}
 ]
