@@ -10,5 +10,12 @@
 		"origin": "http://localhost:8082",
 		"description": "Read your invoice history, get realtime updates on invoices.",
 		"scope": "invoices:read"
+	},
+	{
+		"matchRoute": "/lsp/channels",
+		"origin": "http://localhost:8082",
+		"description": "Read your channel provider details.",
+		"scope": "account:read",
+		"allowPublicAccess": true
 	}
 ]
