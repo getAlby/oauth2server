@@ -83,7 +83,6 @@ func TestGateway_WithToken(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, originServerMsg, rec.Body.String())
 
-	// JWT forwarded
 	token := <-jwtChan
 	assert.Contains(t, token, "Bearer ")
 	jwtToken := strings.TrimPrefix(token, "Bearer ")
@@ -97,7 +96,7 @@ func TestGateway_WithToken(t *testing.T) {
 	assert.False(t, claims["isRefresh"].(bool))
 }
 
-func TestGateway_MissingToken(t *testing.T) {
+func TestGateway_WithoutToken(t *testing.T) {
 	ts, _, _ := startOriginServer(t)
 	defer ts.Close()
 
@@ -128,41 +127,12 @@ func TestGateway_WrongToken(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, rec.Result().StatusCode)
 }
 
-func TestGateway_AllowPublicAccess_WithoutToken(t *testing.T) {
-	ts, jwtChan, originServerMsg := startOriginServer(t)
-	defer ts.Close()
-
-	gateways := initTestGateways(t)
-
-	req, err := http.NewRequest(http.MethodGet, "/lsp/channels", nil) // allowUnauthorized
-	assert.NoError(t, err)
-
-	rec := httptest.NewRecorder()
-	gateways[2].ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, originServerMsg, rec.Body.String())
-
-	// No token should be forwarded
-	token := <-jwtChan
-	assert.Empty(t, token)
-}
-
 func TestGateway_AllowPublicAccess_WithToken(t *testing.T) {
 	ts, jwtChan, originServerMsg := startOriginServer(t)
 	defer ts.Close()
 
 	gateways := initTestGateways(t)
 
-	// wrong token -> unauthorized
-	req, err := http.NewRequest(http.MethodGet, "/lsp/channels", nil)
-	assert.NoError(t, err)
-	req.Header.Set("Authorization", balanceToken)
-	rec := httptest.NewRecorder()
-	gateways[2].ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusUnauthorized, rec.Result().StatusCode)
-
-	// correct token -> success and JWT forwarded
 	req2, err := http.NewRequest(http.MethodGet, "/lsp/channels", nil)
 	assert.NoError(t, err)
 	req2.Header.Set("Authorization", accountToken)
@@ -182,6 +152,38 @@ func TestGateway_AllowPublicAccess_WithToken(t *testing.T) {
 	assert.True(t, parsed.Valid)
 	assert.Positive(t, claims["id"])
 	assert.False(t, claims["isRefresh"].(bool))
+}
+
+func TestGateway_AllowPublicAccess_WithoutToken(t *testing.T) {
+	ts, jwtChan, originServerMsg := startOriginServer(t)
+	defer ts.Close()
+
+	gateways := initTestGateways(t)
+
+	req, err := http.NewRequest(http.MethodGet, "/lsp/channels", nil) // allowUnauthorized
+	assert.NoError(t, err)
+	rec := httptest.NewRecorder()
+	gateways[2].ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, originServerMsg, rec.Body.String())
+
+	// No token should be forwarded
+	token := <-jwtChan
+	assert.Empty(t, token)
+}
+
+func TestGateway_AllowPublicAccess_WrongToken(t *testing.T) {
+	ts, _, _ := startOriginServer(t)
+	defer ts.Close()
+
+	gateways := initTestGateways(t)
+
+	req, err := http.NewRequest(http.MethodGet, "/lsp/channels", nil)
+	assert.NoError(t, err)
+	req.Header.Set("Authorization", balanceToken) // wrongly scoped token
+	rec := httptest.NewRecorder()
+	gateways[2].ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusUnauthorized, rec.Result().StatusCode)
 }
 
 func TestGenerateLNDHubToken(t *testing.T) {
