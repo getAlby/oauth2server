@@ -28,6 +28,15 @@ type service struct {
 	config      Config
 }
 
+type route struct{
+	MatchRoute        string `json:"matchRoute"`
+	Origin            string `json:"origin"`
+	Description       string `json:"description"`
+	Scope             string `json:"scope"`
+	Method            string `json:"method"`
+	AllowPublicAccess bool   `json:"allowPublicAccess"`
+}
+
 func RegisterRoutes(r *mux.Router, svc *service) {
 	r.HandleFunc("/oauth/authorize", svc.AuthorizationHandler)
 	r.HandleFunc("/oauth/token", svc.TokenHandler)
@@ -38,7 +47,7 @@ func RegisterRoutes(r *mux.Router, svc *service) {
 // helper func to load the scopes and their descriptions into a map
 func LoadScopes(filename string) (result map[string]string, err error) {
 	result = map[string]string{}
-	tmp := []map[string]string{}
+	tmp := []route{}
 	targetBytes, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
@@ -48,7 +57,7 @@ func LoadScopes(filename string) (result map[string]string, err error) {
 		return nil, err
 	}
 	for _, entry := range tmp {
-		result[entry["scope"]] = entry["description"]
+		result[entry.Scope] = entry.Description
 	}
 	return result, nil
 }
