@@ -24,6 +24,7 @@ const (
 )
 
 type ContextKey string
+
 const CONTEXT_ID_KEY ContextKey = "ID"
 
 type Service struct {
@@ -54,6 +55,7 @@ func RegisterRoutes(adminRouter, userRouter *mux.Router, svc *Service) {
 	adminRouter.HandleFunc("/admin/clients", svc.ListAllClientsHandler).Methods(http.MethodGet)
 	adminRouter.HandleFunc("/admin/clients/{clientId}", svc.FetchClientHandler).Methods(http.MethodGet)
 	adminRouter.HandleFunc("/admin/clients/{clientId}", svc.UpdateClientMetadataHandler).Methods(http.MethodPut)
+	adminRouter.HandleFunc("/admin/clients/{clientId}", svc.DeleteClientHandler).Methods(http.MethodDelete)
 
 	userRouter.HandleFunc("/clients", svc.ListClientsForUserHandler).Methods(http.MethodGet)
 	userRouter.HandleFunc("/clients/{clientId}", svc.UpdateClientHandler).Methods(http.MethodPost)

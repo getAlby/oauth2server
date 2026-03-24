@@ -27,11 +27,11 @@ jobs:
       #       --health-retries 5
       steps:
           - name: Install Go
-            uses: actions/setup-go@v1
+            uses: actions/setup-go@v5
             with:
               go-version: ${{ matrix.go-version }}
           - name: Checkout code
-            uses: actions/checkout@v2
+            uses: actions/checkout@v4
           - name: Run tests
             run:  go test -p 1 -v -cover -coverpkg=./... ./...
           #   env:
