@@ -1,7 +1,9 @@
 package tokens
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -89,7 +91,12 @@ func NewService(cs oauth2.ClientStore, ts oauth2.TokenStore, scopes map[string]s
 func (svc *service) AuthorizationHandler(w http.ResponseWriter, r *http.Request) {
 	err := svc.OauthServer.HandleAuthorizeRequest(w, r)
 	if err != nil {
-		sentry.CaptureException(err)
+		// Known OAuth protocol errors with a 4xx status code are client mistakes,
+		// not server faults. Report everything else (5xx OAuth errors and any
+		// unrecognised error, e.g. a DB failure).
+		if code, ok := oauthErrors.StatusCodes[err]; !ok || code >= 500 {
+			sentry.CaptureException(err)
+		}
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 }
@@ -103,7 +110,9 @@ func (svc *service) TokenHandler(w http.ResponseWriter, r *http.Request) {
 		logrus.WithField("token_request", fmt.Sprintf("%q", string(dump))).
 			WithError(err).
 			Error("error validating token request")
-		sentry.CaptureException(err)
+		if code, ok := oauthErrors.StatusCodes[err]; !ok || code >= 500 {
+			sentry.CaptureException(err)
+		}
 		svc.tokenError(w, err)
 		return
 	}
@@ -194,8 +203,12 @@ func (svc *service) token(w http.ResponseWriter, data map[string]interface{}, he
 }
 
 func (svc *service) InternalErrorHandler(err error) (re *oauthErrors.Response) {
-	//workaround to not show "sql: no rows in result set" to user
-	sentry.CaptureException(err)
+	// This handler only receives errors the OAuth library couldn't classify, i.e.
+	// genuine server faults — except for context.Canceled, which just means the
+	// client aborted the request, so don't report that to Sentry.
+	if !errors.Is(err, context.Canceled) {
+		sentry.CaptureException(err)
+	}
 	description := oauthErrors.Descriptions[err]
 	statusCode := oauthErrors.StatusCodes[err]
 	if description != "" && statusCode != 0 {
@@ -219,21 +232,24 @@ func (svc *service) InternalErrorHandler(err error) (re *oauthErrors.Response) {
 }
 
 func preRedirectErrorHandler(w http.ResponseWriter, r *server.AuthorizeRequest, err error) error {
+	// The error is returned up to AuthorizationHandler, which decides whether to
+	// report it to Sentry, so only log it here to avoid a duplicate capture.
 	logrus.WithField("Authorize request", r).Error(err)
-	sentry.CaptureException(err)
 	return err
 }
 
 func (svc *service) AuthorizeScopeHandler(w http.ResponseWriter, r *http.Request) (scope string, err error) {
 	requestedScope := r.FormValue("scope")
 	if requestedScope == "" {
-		return "", fmt.Errorf("empty scope is not allowed")
+		logrus.Warn("rejected request with empty scope")
+		return "", oauthErrors.ErrInvalidScope
 	}
 	for _, scope := range strings.Split(requestedScope, " ") {
 		if _, found := svc.scopes[scope]; !found {
-			err = fmt.Errorf("scope not allowed: %s", scope)
-			sentry.CaptureException(err)
-			return "", err
+			// Caller requested an unknown scope — a client error, not a server
+			// fault. Return the standard OAuth error so it isn't reported to Sentry.
+			logrus.WithField("scope", scope).Warn("rejected request with disallowed scope")
+			return "", oauthErrors.ErrInvalidScope
 		}
 	}
 	return requestedScope, nil
