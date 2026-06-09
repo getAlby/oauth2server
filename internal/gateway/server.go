@@ -34,6 +34,8 @@ type OriginServer struct {
 }
 
 func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
 	//check authorization
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 
@@ -43,6 +45,12 @@ func (origin *OriginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tokenInfo, err := origin.CheckTokenFunc(r.Context(), token)
+
+	// Client has aborted the request
+	if ctx.Err() == context.Canceled {
+		return
+	}
+
 	if err != nil {
 		if status, found := errorResponses[err.Error()]; found {
 			writeErrorResponse(w, err.Error(), status)

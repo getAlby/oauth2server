@@ -1,17 +1,17 @@
 package tokens
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/getsentry/sentry-go"
 	"github.com/go-oauth2/oauth2/v4"
+	oauthErrors "github.com/go-oauth2/oauth2/v4/errors"
 	"github.com/go-oauth2/oauth2/v4/manage"
 	"github.com/go-oauth2/oauth2/v4/server"
+	"github.com/sirupsen/logrus"
 )
 
 func initOauthServer(conf Config, cs oauth2.ClientStore, ts oauth2.TokenStore) (srv *server.Server, err error) {
@@ -99,9 +99,17 @@ func checkRedirectUriDomain(baseURI, redirectURI string) error {
 	clientHost := parsedClientUri.Host
 	redirectHost := parsedRedirect.Host
 	if parsedClientUri.Scheme != parsedRedirect.Scheme || !isUriValid(clientHost, redirectHost) {
-		err = fmt.Errorf("wrong redirect uri, provided: [ scheme: %s, host: %s ], expected: [ scheme: %s, host: %s ]", parsedRedirect.Scheme, parsedRedirect.Host, parsedClientUri.Scheme, parsedClientUri.Host)
-		sentry.CaptureException(err)
-		return err
+		// Caller supplied a redirect URI that doesn't match the registered one — a
+		// client misconfiguration, not a server fault. Log only scheme/host (not the
+		// full client-supplied URIs) and return a standard OAuth error so it isn't
+		// reported to Sentry downstream.
+		logrus.WithFields(logrus.Fields{
+			"provided_scheme": parsedRedirect.Scheme,
+			"provided_host":   redirectHost,
+			"expected_scheme": parsedClientUri.Scheme,
+			"expected_host":   clientHost,
+		}).Warn("rejected request with mismatched redirect uri")
+		return oauthErrors.ErrInvalidRequest
 	}
 	return nil
 }

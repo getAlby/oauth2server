@@ -3,6 +3,7 @@ package clients
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"strings"
@@ -211,10 +212,12 @@ func (service *Service) FetchClientHandler(w http.ResponseWriter, r *http.Reques
 	id := mux.Vars(r)["clientId"]
 	result, err := service.cs.GetClient(id)
 	if err != nil {
-		sentry.CaptureException(err)
 		status := http.StatusInternalServerError
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Unknown client_id — a client error, not a server fault.
 			status = http.StatusNotFound
+		} else {
+			sentry.CaptureException(err)
 		}
 		http.Error(w, err.Error(), status)
 		return
