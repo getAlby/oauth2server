@@ -10,7 +10,7 @@ jobs:
       IMAGENAME: ${{ github.event.repository.name }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
       name: Check out code
     - name: Docker build
       uses: mr-smithers-excellent/docker-build-push@v5
@@ -21,7 +21,7 @@ jobs:
         username: ${{ github.repository_owner }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Checkout deployment repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: getalby/alby-deployment
         path: infrastructure
