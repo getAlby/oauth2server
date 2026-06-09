@@ -100,10 +100,15 @@ func checkRedirectUriDomain(baseURI, redirectURI string) error {
 	redirectHost := parsedRedirect.Host
 	if parsedClientUri.Scheme != parsedRedirect.Scheme || !isUriValid(clientHost, redirectHost) {
 		// Caller supplied a redirect URI that doesn't match the registered one — a
-		// client misconfiguration, not a server fault. Log the detail and return a
-		// standard OAuth error so it isn't reported to Sentry downstream.
-		logrus.WithField("provided", redirectURI).WithField("expected", baseURI).
-			Warn("rejected request with mismatched redirect uri")
+		// client misconfiguration, not a server fault. Log only scheme/host (not the
+		// full client-supplied URIs) and return a standard OAuth error so it isn't
+		// reported to Sentry downstream.
+		logrus.WithFields(logrus.Fields{
+			"provided_scheme": parsedRedirect.Scheme,
+			"provided_host":   redirectHost,
+			"expected_scheme": parsedClientUri.Scheme,
+			"expected_host":   clientHost,
+		}).Warn("rejected request with mismatched redirect uri")
 		return oauthErrors.ErrInvalidRequest
 	}
 	return nil
