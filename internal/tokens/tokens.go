@@ -2,6 +2,7 @@ package tokens
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httputil"
@@ -200,7 +201,7 @@ func (svc *service) InternalErrorHandler(err error) (re *oauthErrors.Response) {
 	statusCode := oauthErrors.StatusCodes[err]
 	if description != "" && statusCode != 0 {
 		return &oauthErrors.Response{
-			Error:       fmt.Errorf(description),
+			Error:       errors.New(description),
 			ErrorCode:   statusCode,
 			Description: description,
 			URI:         "",

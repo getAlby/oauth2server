@@ -1,6 +1,6 @@
 module oauth2server
 
-go 1.17
+go 1.27.3
 
 require (
 	github.com/felixge/httpsnoop v1.0.3
