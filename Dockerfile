@@ -1,4 +1,4 @@
-FROM golang:1.20-alpine as builder
+FROM golang:1.27.3-alpine as builder
 
 # Move to working directory /build
 WORKDIR /build
@@ -15,7 +15,11 @@ COPY . .
 RUN go build -o main cmd/server/main.go
 
 # Start a new, final image to reduce size.
-FROM alpine as final
+FROM alpine:3.24 as final
+
+# Pinned CA bundle (fix for the eMudhra CA compromise, Oct 2026); bump
+# deliberately when Alpine ships a new version
+RUN apk add --no-cache ca-certificates-bundle=20261020-r0
 
 # Copy the binaries and entrypoint from the builder image.
 COPY --from=builder /build/main /bin/
